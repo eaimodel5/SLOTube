@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "Video": {
+      "title": "Video",
+      "description": "A YouTube video mapped to an SLO Goal and assessed by AI or a teacher.",
+      "type": "object",
+      "properties": {
+        "videoId": { "type": "string", "description": "The YouTube video ID" },
+        "title": { "type": "string" },
+        "channelTitle": { "type": "string" },
+        "description": { "type": "string" },
+        "duration": { "type": "string", "description": "ISO 8601 duration" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "thumbnailUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "addedBy": { "type": "string", "description": "Firebase UID of admin/teacher who added it" },
+        "assessedGoals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "goalId": { "type": "string" },
+              "matchScore": { "type": "number" },
+              "aiFeedback": { "type": "string" },
+              "assessedAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "required": ["videoId", "title", "status"]
+    }
+  },
+  "firestore": {
+    "/videos": {
+      "description": "Storage for all YouTube videos pre-scraped and available in the platform.",
+      "schema": {
+        "$ref": "#/entities/Video"
+      }
+    }
+  }
+}

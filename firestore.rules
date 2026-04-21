@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Primitive Definition
+    function isValidId(id) { 
+        return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // For MVP, since we do not have an actual Google SignIn flow fully connected to users, 
+    // we allow global read/write for now to prevent blocking development. 
+    // In production, this must be `request.auth != null`.
+    function isAllowed() { return true; } 
+    
+    function isValidVideo(data) {
+        return data.keys().hasAll(['videoId', 'title', 'status'])
+            && data.videoId is string && data.videoId.size() <= 64
+            && data.title is string && data.title.size() <= 200
+            && data.status is string && data.status.matches('^(pending|approved|rejected)$');
+    }
+
+    match /videos/{videoId} {
+      allow read: if isAllowed();
+      
+      allow create: if isAllowed() 
+                    && isValidId(videoId)
+                    && isValidVideo(incoming());
+                    
+      allow update: if isAllowed()
+                    && isValidVideo(incoming())
+                    && incoming().diff(existing()).affectedKeys().hasAny(['status', 'assessedGoals', 'thumbnailUrl', 'duration', 'publishedAt']);
+                    
+      allow delete: if isAllowed();
+    }
+  }
+}
