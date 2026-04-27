@@ -42,7 +42,7 @@ service cloud.firestore {
                     
       allow update: if isAllowed()
                     && isValidVideo(incoming())
-                    && incoming().diff(existing()).affectedKeys().hasAny(['status', 'assessedGoals', 'thumbnailUrl', 'duration', 'publishedAt']);
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assessedGoals', 'reviewedAt', 'reviewedBy', 'updatedAt', 'rejectReason', 'thumbnailUrl', 'duration', 'publishedAt']);
                     
       allow delete: if isAllowed();
     }

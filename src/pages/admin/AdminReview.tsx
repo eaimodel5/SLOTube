@@ -43,7 +43,9 @@ export default function AdminReview() {
         const q = query(collection(db, "videos"), where("status", "==", "pending"));
         const snap = await getDocs(q);
         const vids: any[] = [];
-        snap.forEach(d => vids.push(d.data()));
+        snap.forEach(d => {
+          vids.push({ ...d.data(), firestoreId: d.id });
+        });
         setPendingVideos(vids);
       } catch(e) {
         console.error(e);
@@ -90,16 +92,30 @@ export default function AdminReview() {
     if (!selectedVideo) return;
     setIsSaving(true);
     try {
-      const ref = doc(db, "videos", selectedVideo.videoId);
+      const ref = doc(db, "videos", selectedVideo.firestoreId || selectedVideo.id || selectedVideo.videoId);
       
       const payload: any = { status: decision };
-      if (assessment && selectedGoalId && decision === 'approved') {
-        payload.assessedGoals = arrayUnion({
-          goalId: selectedGoalId,
-          matchScore: assessment.score,
-          aiFeedback: assessment.feedback,
-          assessedAt: new Date().toISOString()
-        });
+      
+      const currentUser = sessionStorage.getItem('databaas_name') || 'admin';
+      
+      if (decision === 'approved') {
+        payload.reviewedAt = new Date().toISOString();
+        payload.reviewedBy = currentUser;
+        payload.updatedAt = new Date().toISOString();
+        
+        if (assessment && selectedGoalId) {
+          payload.assessedGoals = arrayUnion({
+            goalId: selectedGoalId,
+            matchScore: assessment.score,
+            aiFeedback: assessment.feedback,
+            assessedAt: new Date().toISOString()
+          });
+        }
+      } else if (decision === 'rejected') {
+        payload.reviewedAt = new Date().toISOString();
+        payload.reviewedBy = currentUser;
+        payload.rejectReason = "Handmatig afgekeurd in review";
+        payload.updatedAt = new Date().toISOString();
       }
 
       await updateDoc(ref, payload);
@@ -221,6 +237,16 @@ export default function AdminReview() {
                     <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span> 
                     {selectedVideo.channelTitle}
                   </p>
+                  
+                  {selectedVideo.matchReason && (
+                    <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                      <p className="text-sm text-emerald-800 font-semibold mb-1">Automatische voorselectie (Score: {selectedVideo.matchScore}%)</p>
+                      <p className="text-xs text-emerald-700">{selectedVideo.matchReason}</p>
+                      {selectedVideo.matchEvidence && selectedVideo.matchEvidence.length > 0 && (
+                        <p className="text-xs text-emerald-600/80 mt-1">Gevonden termen: {selectedVideo.matchEvidence.join(', ')}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Player/Preview */}

@@ -41,6 +41,11 @@ export default function GoalDetail() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [liveResults, setLiveResults] = useState<any[] | null>(null);
+  
+  // Discovery states
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoveryCandidates, setDiscoveryCandidates] = useState<any[] | null>(null);
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
@@ -131,6 +136,67 @@ export default function GoalDetail() {
     }
   };
 
+  const handleDiscovery = async () => {
+    if (!goal) return;
+    if (sessionStorage.getItem('eai_auth') !== 'true') {
+      setShowPasswordModal(true);
+      return;
+    }
+
+    setIsDiscovering(true);
+    setDiscoveryCandidates(null);
+    try {
+      const resp = await fetch('/api/discovery/goal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal, limit: 10, useAi: false })
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setDiscoveryCandidates(data.candidates);
+      } else {
+        alert(data.error || "Mislukt om suggesties te zoeken.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Er is iets misgegaan bij het zoeken naar suggesties.");
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleSendToReview = async (candidate: any) => {
+    try {
+      // Check if it already exists in database
+      const q = query(collection(db, "videos"), where("videoId", "==", candidate.videoId), where("goalId", "==", id));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alert("Deze video staat al in de database voor dit kerndoel (misschien onder review of al beoordeeld).");
+        return;
+      }
+
+      const docRef = await import('firebase/firestore').then(({ addDoc, collection, serverTimestamp }) => {
+        return addDoc(collection(db, "videos"), {
+          ...candidate,
+          goalId: id,
+          status: "pending",
+          origin: candidate.origin || "discovery",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      alert("Video is succesvol naar de review gestuurd!");
+      
+      // Remove from list
+      setDiscoveryCandidates(prev => prev ? prev.filter(c => c.videoId !== candidate.videoId) : null);
+      
+    } catch(e) {
+      console.error(e);
+      alert("Kon de video niet toevoegen aan review.");
+    }
+  };
+
   if (!goal) return <div className="p-8 text-center text-zinc-500">Laden...</div>;
 
   return (
@@ -161,6 +227,18 @@ export default function GoalDetail() {
       <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
         <h2 className="text-lg font-medium text-zinc-900 mb-2">Zoek of Importeer Lesmateriaal</h2>
         <p className="text-sm text-zinc-500 mb-4">Vind direct nieuw lesmateriaal voor dit kerndoel. Typ een zoekterm om op YouTube te zoeken, of plak een directe link naar een andere website.</p>
+        
+        <div className="flex flex-col md:flex-row gap-6 mb-6">
+          <button 
+            onClick={handleDiscovery}
+            disabled={isDiscovering}
+            className="w-full md:w-1/2 px-6 py-4 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-medium hover:bg-emerald-100 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
+          >
+            {isDiscovering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+            Automatisch suggesties zoeken
+          </button>
+        </div>
+
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
           className="relative max-w-4xl flex flex-col sm:flex-row gap-3"
@@ -197,10 +275,64 @@ export default function GoalDetail() {
             className="w-full sm:w-auto px-6 py-3 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-sm shrink-0"
           >
             {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Zoek Materiaal
+            Handmatig Zoeken
           </button>
         </form>
       </div>
+
+      {/* Discovery Results */}
+      {discoveryCandidates && discoveryCandidates.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-zinc-900 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+            Gevonden Suggesties (Lokaal Geanalyseerd)
+          </h2>
+          <div className="grid grid-cols-1 gap-4">
+            {discoveryCandidates.map((candidate, idx) => (
+              <div key={idx} className="flex flex-col md:flex-row gap-6 p-4 bg-white border border-emerald-100 rounded-xl shadow-sm relative overflow-hidden">
+                {/* Thumbnail */}
+                <div className="relative w-full md:w-64 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-emerald-50">
+                  <img src={candidate.thumbnailUrl} alt={candidate.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
+                    <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-lg" />
+                  </div>
+                </div>
+                {/* Data */}
+                <div className="flex flex-col flex-1 py-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-zinc-900 line-clamp-2 leading-tight mb-2">{candidate.title}</h3>
+                  <div className="flex items-center gap-4 text-sm text-zinc-600 mb-4">
+                    <span className="flex items-center gap-1"><Youtube className="w-4 h-4" /> {candidate.channelTitle}</span>
+                    <span className="font-mono bg-zinc-100 px-2 py-0.5 rounded text-xs">{candidate.sourceName || candidate.provider}</span>
+                  </div>
+                  <div className="max-w-2xl text-sm bg-emerald-50 p-3 rounded-lg border border-emerald-100 mb-4">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-emerald-800">Match Score: {candidate.matchScore}%</span>
+                    </div>
+                    <p className="text-emerald-700">{candidate.matchReason}</p>
+                    {candidate.matchEvidence && candidate.matchEvidence.length > 0 && (
+                      <p className="text-emerald-600/80 mt-1 text-xs">Overlap: {candidate.matchEvidence.join(', ')}</p>
+                    )}
+                  </div>
+                  <div className="mt-auto self-end">
+                    <button 
+                      onClick={() => handleSendToReview(candidate)}
+                      className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                      Naar review sturen
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {discoveryCandidates && discoveryCandidates.length === 0 && (
+        <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl rounded-dashed">
+          <p className="text-zinc-600">Geen nieuwe bruikbare suggesties gevonden voor dit kerndoel.</p>
+        </div>
+      )}
 
       {/* Live YouTube/Scrape Results */}
       {liveResults && (

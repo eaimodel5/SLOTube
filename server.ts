@@ -4,6 +4,8 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { generateQueriesForGoal } from "./src/lib/discovery/queryGenerator";
+import { matchVideoToGoal } from "./src/lib/matching/localGoalMatcher";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -387,6 +389,89 @@ async function startServer() {
     } catch (error) {
       console.error("AI assessment failed:", error);
       res.status(500).json({ error: "De AI kon de video niet beoordelen." });
+    }
+  });
+
+  // Discovery Endpoint
+  app.post("/api/discovery/goal", async (req, res) => {
+    const { goal, limit = 12, useAi = false } = req.body;
+    if (!goal || !goal.id) {
+      return res.status(400).json({ error: "Geen kerndoel meegestuurd." });
+    }
+
+    const queries = generateQueriesForGoal(goal);
+    const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({ error: "YouTube API Key ontbreekt in config." });
+    }
+
+    try {
+      const allVideos = new Map();
+      // Only do top 3 queries to avoid rate limits on youtube search
+      const activeQueries = queries.slice(0, 3);
+
+      for (const query of activeQueries) {
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relevanceLanguage=nl&safeSearch=moderate&maxResults=5&q=${encodeURIComponent(query)}&key=${apiKey}`;
+        const searchResponse = await fetch(searchUrl);
+        
+        if (!searchResponse.ok) continue;
+        const searchData = await searchResponse.json();
+        if (!searchData.items || searchData.items.length === 0) continue;
+
+        const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
+        if (!videoIds) continue;
+
+        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
+        const detailsResponse = await fetch(detailsUrl);
+        if (!detailsResponse.ok) continue;
+        const detailsData = await detailsResponse.json();
+
+        if (detailsData.items) {
+          for (const item of detailsData.items) {
+            if (!allVideos.has(item.id)) {
+              let candidate = {
+                id: item.id,
+                videoId: item.id,
+                title: item.snippet.title,
+                url: `https://www.youtube.com/watch?v=${item.id}`,
+                channelTitle: item.snippet.channelTitle,
+                description: item.snippet.description,
+                durationSeconds: 0, // Would need ISO parser here, omitted for brevity
+                publishedAt: item.snippet.publishedAt,
+                thumbnailUrl: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+                provider: "youtube" as "youtube",
+                sourceName: "YouTube",
+                origin: "discovery" as "discovery",
+                status: "pending" as "pending"
+              };
+
+              const matchResult = matchVideoToGoal(candidate, goal);
+              if (matchResult.score >= 35) { // Only keep candidates >= 35 score
+                candidate = {
+                  ...candidate,
+                  matchScore: matchResult.score,
+                  matchReason: matchResult.reason,
+                  matchEvidence: matchResult.evidence
+                } as any;
+                allVideos.set(item.id, candidate);
+              }
+            }
+          }
+        }
+      }
+
+      const candidates = Array.from(allVideos.values()).sort((a: any, b: any) => (b.matchScore || 0) - (a.matchScore || 0)).slice(0, Math.min(limit, 25));
+
+      res.json({
+        goalId: goal.id,
+        queries,
+        candidates
+      });
+
+    } catch (error) {
+      console.error("Discovery error:", error);
+      res.status(500).json({ error: "Fout tijdens zoeken naar nieuwe video's." });
     }
   });
 
