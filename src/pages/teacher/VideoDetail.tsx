@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BadgeInfo, ShieldCheck, Video as VideoIcon, Database, Loader2 } from 'lucide-react';
+import { ArrowLeft, BadgeInfo, ShieldCheck, Video as VideoIcon, Database, Loader2, Clock } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
@@ -179,9 +179,9 @@ export default function VideoDetail() {
                 <div className="text-sm text-zinc-500">Beoordeling laden...</div>
               ) : video?.status === 'live_preview' ? (
                 <div className="flex flex-col gap-4">
-                  <div className="text-sm text-amber-600 bg-amber-50 border border-amber-100 p-4 rounded-lg">
+                  <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-4 rounded-lg">
                     <p className="font-semibold mb-1">Live online resultaat</p>
-                    <p>Deze bron is gevonden via de geselecteerde bronnen en is nog niet beoordeeld door de Databaas (AI keurmeester of goedgekeurd door schoolbeheer).</p>
+                    <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door de Databaas (AI keurmeester of goedgekeurd door schoolbeheer).</p>
                   </div>
                   
                   <button 
@@ -195,14 +195,23 @@ export default function VideoDetail() {
                   
                   {proposed && (
                     <p className="text-xs text-emerald-600 font-medium text-center">
-                      Succes! De bron staat in de wachtrij van de Databaas.
+                       Succes! De bron staat in de wachtrij van de Databaas.
                     </p>
                   )}
                 </div>
               ) : video?.status === 'pending' ? (
-                <div className="text-sm text-blue-600 bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                  <p className="font-semibold mb-1">In review</p>
-                  <p>Deze bron is voorgesteld en wacht op goedkeuring door de Databaas.</p>
+                <div className="text-sm text-blue-700 bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                  <p className="flex items-center gap-2 font-semibold mb-1">
+                    <Clock className="w-4 h-4" /> Wacht op review
+                  </p>
+                  <p>Deze bron is voorgesteld en wacht nog op goedkeuring van een beheerder.</p>
+                </div>
+              ) : video?.status === 'rejected' ? (
+                <div className="text-sm text-red-700 bg-red-50 border border-red-200 p-4 rounded-lg">
+                  <p className="flex items-center gap-2 font-semibold mb-1">
+                    Afgekeurd
+                  </p>
+                  <p>Deze bron is afgekeurd en zal niet worden getoond.</p>
                 </div>
               ) : video?.assessedGoals && video.assessedGoals.length > 0 ? (
                 video.assessedGoals.map((assessment, i) => (

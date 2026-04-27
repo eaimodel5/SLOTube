@@ -8,7 +8,12 @@ export const impulsProvider: DiscoveryProvider = {
     const results: RawCandidate[] = [];
     for (const q of activeQueries) {
       if (!q?.text) continue;
-      const res = await webSearch(q.text, "impuls-open-leermateriaal", "Impuls Open Leermateriaal", "impulsopenleermateriaal.nl");
+      const res = await webSearch(
+        `${q.text} "impuls open leermateriaal"`,
+        "impuls-open-leermateriaal",
+        "Impuls Open Leermateriaal",
+        "openleermateriaal.nl"
+      );
       results.push(...res);
     }
     return results;

@@ -9,6 +9,7 @@ import { runDiscoveryForGoal } from "./src/lib/discovery/discoveryService";
 import { runAiAssessment } from "./src/lib/matching/optionalAiMatcher";
 import { matchVideoToGoal } from "./src/lib/matching/localGoalMatcher";
 import { NormalizedSloGoal } from "./src/lib/slo/sloTypes";
+import { generateStableId, canonicalizeUrl } from "./src/lib/media/urlUtils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,19 +98,45 @@ async function startServer() {
       let domain = "";
       try { domain = new URL(url).hostname; } catch(e){}
 
+      const canonicalUrl = canonicalizeUrl(url);
+
+      const sourceId =
+        domain.includes("schooltv.nl") ? "schooltv" :
+        domain.includes("hetklokhuis.nl") ? "het-klokhuis" :
+        domain.includes("wikiwijs.nl") ? "wikiwijs" :
+        domain.includes("openleermateriaal.nl") ? "openleermateriaal" :
+        domain.includes("npo.nl") ? "npo" :
+        domain.includes("wikipedia.org") ? "wikipedia" :
+        "web";
+
+      const sourceName =
+        sourceId === "schooltv" ? "Schooltv" :
+        sourceId === "het-klokhuis" ? "Het Klokhuis" :
+        sourceId === "wikiwijs" ? "Wikiwijs" :
+        sourceId === "openleermateriaal" ? "Openleermateriaal" :
+        sourceId === "npo" ? "NPO" :
+        sourceId === "wikipedia" ? "Wikipedia" :
+        domain || "Externe Bron";
+
+      const safeId = generateStableId(sourceId, canonicalUrl);
+
+      const finalThumbnailUrl =
+        thumbnailUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(domain || "Web")}&background=ffffff&color=000000&size=512`;
+
       let matchScore = 0;
       let matchReason = "";
       let matchEvidence: string[] = [];
 
       if (goal) {
           const raw = {
-              sourceId: "web",
-              sourceName: domain || "Externe Bron",
+              sourceId,
+              sourceName,
               sourceUrl: url,
+              canonicalUrl,
               title: title,
               description: description,
-              thumbnailUrl: thumbnailUrl,
-              channelTitle: domain || "Externe Bron",
+              thumbnailUrl: finalThumbnailUrl,
+              channelTitle: sourceName,
               duration: "Web/Bron",
               publishedAt: new Date().toISOString()
           };
@@ -121,20 +148,27 @@ async function startServer() {
 
       // create a generic video object format to reuse the UI
       const result = {
-        id: encodeURIComponent(url), // Safely URL-encode the ID so router path is not broken
+        id: safeId,
         videoId: url,
         title: title,
-        channelTitle: domain || "Externe Bron",
+        channelTitle: sourceName,
         description: description,
         duration: "Web/Bron",
         publishedAt: new Date().toISOString(),
         status: "pending",
+        origin: "manual",
+        provider: "web",
+        sourceType: "website",
+        sourceId,
+        sourceName,
+        sourceUrl: url,
+        canonicalUrl,
         matchScore: matchScore,
         matchReason: matchReason,
         matchEvidence: matchEvidence,
-        thumbnailUrl: thumbnailUrl || `https://ui-avatars.com/api/?name=${domain}&background=ffffff&color=000000&size=512`,
-        viewCount: "-",
-        sourceType: "website"
+        thumbnailUrl: finalThumbnailUrl,
+        thumbnailStatus: thumbnailUrl ? "opengraph" : "fallback",
+        viewCount: "-"
       };
       
       res.json([result]);

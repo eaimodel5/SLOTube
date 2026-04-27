@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // PRODUCTION TEMPLATE
+    // Security definitions:
+    // 1. users must be authenticated to read (unless public lists are required)
+    // 2. teachers (or any auth'd user) can create 'pending' videos
+    // 3. only admins can transition status to 'approved' or 'rejected'
+    // ==========================================
+    
+    function isAuthenticated() { 
+      return request.auth != null; 
+    }
+    
+    // Assuming an admins collection exists to verify admin privileges
+    function isAdmin() { 
+       return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); 
+    }
+
+    // Helper functions for validating data
+    function isValidId(id) { 
+      // Basic UUID or URL-encoded alphanumeric validation
+      return id is string && id.size() > 0 && id.size() <= 800; // allow longer IDs for encoded URLs
+    }
+
+    function isValidStatus(status) {
+      return status in ["pending", "approved", "rejected"];
+    }
+    
+    function isValidVideoFields(data) {
+      // Must contain basic fields
+      return data.keys().hasAll(['id', 'title', 'status', 'origin'])
+          && data.title is string
+          && data.status is string
+          && isValidStatus(data.status);
+    }
+
+    function isPendingState(data) {
+      return data.status == "pending";
+    }
+
+    match /videos/{videoId} {
+      // Anybody authenticated can read the videos list
+      allow read: if isAuthenticated();
+      
+      // Creating a new video suggestion
+      // - Must be authenticated
+      // - The ID payload must match the document ID
+      // - Must have valid fields
+      // - Forced to be pending by default
+      allow create: if isAuthenticated() 
+                    && isValidVideoFields(request.resource.data)
+                    && isPendingState(request.resource.data)
+                    && request.resource.data.id == videoId;
+      
+      // Updates 
+      // - Only Admins can approve or reject
+      // - Authenticated users might be able to update if they keep it 'pending', but strictly limiting to admin is safer for prod
+      allow update: if isAdmin() && isValidVideoFields(request.resource.data);
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    match /system_config/{configId} {
+      allow read: if true; // Might need to be public for bootstrap
+      allow write: if isAdmin();
+    }
+
+    match /databaas_codes/{codeId} {
+      allow read, write: if isAdmin(); 
+      // Do not open reading of codes to regular users
+    }
+    
+    match /admins/{adminId} {
+      allow read: if isAuthenticated(); // To check if current user is admin
+      allow write: if false; // Requires backend script or manual console addition
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

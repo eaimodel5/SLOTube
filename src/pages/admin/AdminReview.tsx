@@ -233,31 +233,36 @@ export default function AdminReview() {
                 
                 <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">
-                      Bron ID: {selectedVideo.sourceId} • Herkomst: {selectedVideo.origin}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded flex items-center gap-1">
+                      {selectedVideo.provider === 'youtube' ? <Video className="w-3 h-3" /> : <Database className="w-3 h-3"/>}
+                      {selectedVideo.sourceName || 'Bron'} • Herkomst: {selectedVideo.origin === 'manual' ? 'Handmatig' : 'Automatisch'}
                     </span>
-                    <span className="text-[10px] font-mono text-zinc-400">ID: {selectedVideo.id}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 truncate max-w-[150px]">ID: {selectedVideo.id}</span>
                   </div>
                   <h2 className="text-lg font-bold text-zinc-900 leading-snug">{selectedVideo.title}</h2>
-                  <p className="text-sm font-medium text-zinc-500 mt-1 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${selectedVideo.provider === 'youtube' ? 'bg-red-500' : 'bg-blue-500'}`}></span> 
+                  <p className="text-sm font-medium text-zinc-500 mt-1 flex items-center gap-1.5">
                     {selectedVideo.channelTitle || selectedVideo.sourceName}
                   </p>
                   
                   {(selectedVideo.matchReason || selectedVideo.goalSnapshot) && (
                     <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-sm text-emerald-800 font-semibold">Automatische match (Score: {selectedVideo.matchScore}%)</p>
+                        <p className="text-sm text-emerald-800 font-semibold">Waarom gevonden (Score: {selectedVideo.matchScore}%)</p>
                         {selectedVideo.goalSnapshot && (
-                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Gekoppeld aan: {selectedVideo.goalSnapshot.id}</span>
+                           <span className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded">Kerndoel: {selectedVideo.goalSnapshot.id}</span>
                         )}
                       </div>
-                      <p className="text-xs text-emerald-700">{selectedVideo.matchReason}</p>
+                      <p className="text-xs text-emerald-700 leading-relaxed mb-2">{selectedVideo.matchReason}</p>
                       {selectedVideo.goalSnapshot && (
-                         <p className="text-[10px] text-emerald-600 italic mt-1 font-medium italic">"{selectedVideo.goalSnapshot.sentence}"</p>
+                         <p className="text-[11px] text-emerald-800 font-medium italic p-2 bg-white/50 rounded inline-block">"{selectedVideo.goalSnapshot.sentence}"</p>
                       )}
                       {selectedVideo.matchEvidence && selectedVideo.matchEvidence.length > 0 && (
-                        <p className="text-[10px] text-emerald-600/80 mt-1 font-mono uppercase">Bewijs: {selectedVideo.matchEvidence.join(', ')}</p>
+                        <div className="mt-2 text-[10px] text-emerald-600/80 font-mono flex gap-1 flex-wrap">
+                          <span className="uppercase font-bold mr-1 block w-full">Bewijs:</span>
+                          {selectedVideo.matchEvidence.map((ev: string, i: number) => (
+                             <span key={i} className="bg-emerald-100/50 border border-emerald-200/50 px-1.5 rounded">{ev}</span>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
