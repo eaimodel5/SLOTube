@@ -1,15 +1,21 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, BadgeInfo, ShieldCheck, Video as VideoIcon } from 'lucide-react';
+import { ArrowLeft, BadgeInfo, ShieldCheck, Video as VideoIcon, Database, Loader2 } from 'lucide-react';
 import { db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 interface VideoData {
+  id: string;
   videoId: string;
   title: string;
   channelTitle: string;
   description: string;
   status: string;
+  duration?: string;
+  publishedAt?: string;
+  thumbnailUrl?: string;
+  matchScore?: number;
+  sourceType?: string;
   assessedGoals?: {goalId: string, matchScore: number, aiFeedback?: string}[];
 }
 
@@ -18,6 +24,8 @@ export default function VideoDetail() {
   const navigate = useNavigate();
   const [video, setVideo] = useState<VideoData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isProposing, setIsProposing] = useState(false);
+  const [proposed, setProposed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -25,7 +33,22 @@ export default function VideoDetail() {
       try {
         const d = await getDoc(doc(db, "videos", id));
         if (d.exists()) {
-          setVideo(d.data() as VideoData);
+          const vData = d.data() as VideoData;
+          setVideo(vData);
+          if (vData.status === 'pending') setProposed(true);
+        } else {
+          // Check session storage for live results
+          const liveDataStr = sessionStorage.getItem('live_search_results');
+          if (liveDataStr) {
+            const liveData = JSON.parse(liveDataStr);
+            const found = liveData.find((v: any) => v.id === id || v.videoId === id);
+            if (found) {
+              setVideo({
+                ...found,
+                status: 'live_preview' // indicating it's not yet officially approved
+              });
+            }
+          }
         }
       } catch (e) {
         console.error("Error fetching video detail", e);
@@ -35,6 +58,33 @@ export default function VideoDetail() {
     }
     fetchVideo();
   }, [id]);
+
+  const handlePropose = async () => {
+    if (!video || !id) return;
+    setIsProposing(true);
+    try {
+      await setDoc(doc(db, "videos", id), {
+        videoId: video.videoId || id,
+        title: video.title,
+        channelTitle: video.channelTitle,
+        description: video.description || "",
+        duration: video.duration || "",
+        publishedAt: video.publishedAt || new Date().toISOString(),
+        thumbnailUrl: video.thumbnailUrl || "",
+        status: "pending",
+        addedAt: serverTimestamp(),
+        addedBy: "docent", 
+        matchScore: video.matchScore || 0,
+        sourceType: video.sourceType || "youtube"
+      }, { merge: true });
+      setProposed(true);
+    } catch (e) {
+      console.error(e);
+      alert("Fout bij voorstellen aan databaas.");
+    } finally {
+      setIsProposing(false);
+    }
+  };
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 pb-24">
@@ -51,22 +101,38 @@ export default function VideoDetail() {
         
         {/* Main Column - Video & Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* YouTube Player */}
+          {/* Player/Preview */}
           <div className="aspect-video bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-500 relative overflow-hidden">
-            {id && id.length > 5 ? (
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src={`https://www.youtube.com/embed/${id}`} 
-                title="YouTube video player" 
-                frameBorder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowFullScreen>
-              </iframe>
+            {video?.sourceType === 'website' || video?.duration === 'Web/Bron' ? (
+              <div className="absolute inset-0 bg-zinc-100 flex flex-col items-center justify-center p-8 text-center text-zinc-900">
+                <img src={video.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-20" />
+                <h3 className="font-semibold text-lg z-10 mb-2">Dit is een externe webpagina</h3>
+                <p className="text-zinc-600 text-sm z-10 mb-6 max-w-sm">Klik op de onderstaande knop om direct naar het bijbehorende artikel of platform te gaan.</p>
+                <a href={video.videoId} target="_blank" rel="noopener noreferrer" className="z-10 px-6 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors shadow-sm">
+                  Open Lesmateriaal
+                </a>
+              </div>
+            ) : id && id.length > 5 ? (
+              <>
+                <iframe 
+                  width="100%" 
+                  height="100%" 
+                  src={`https://www.youtube.com/embed/${id?.includes('youtube.com') || id?.includes('youtu.be') ? (id.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || id) : id}?origin=${window.location.origin}`} 
+                  title="YouTube video player" 
+                  frameBorder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen>
+                </iframe>
+                <div className="absolute bottom-4 right-4 z-10">
+                  <a href={`https://www.youtube.com/watch?v=${id?.includes('youtube.com') || id?.includes('youtu.be') ? (id.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || id) : id}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-black/80 hover:bg-black text-white text-xs rounded shadow-lg backdrop-blur flex items-center gap-2">
+                    Open in YouTube
+                  </a>
+                </div>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center space-y-2">
                  <BadgeInfo className="w-6 h-6 text-zinc-400" />
-                 <span className="text-zinc-400">Ongeldig Video ID</span>
+                 <span className="text-zinc-400">Ongeldig ID</span>
               </div>
             )}
           </div>
@@ -99,6 +165,33 @@ export default function VideoDetail() {
             <div className="space-y-4">
               {loading ? (
                 <div className="text-sm text-zinc-500">Beoordeling laden...</div>
+              ) : video?.status === 'live_preview' ? (
+                <div className="flex flex-col gap-4">
+                  <div className="text-sm text-amber-600 bg-amber-50 border border-amber-100 p-4 rounded-lg">
+                    <p className="font-semibold mb-1">Live online resultaat</p>
+                    <p>Deze bron is gevonden via de geselecteerde bronnen en is nog niet beoordeeld door de Databaas (AI keurmeester of goedgekeurd door schoolbeheer).</p>
+                  </div>
+                  
+                  <button 
+                    onClick={handlePropose}
+                    disabled={isProposing || proposed}
+                    className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    {isProposing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                    {proposed ? 'Voorgesteld voor review' : 'Stel voor aan Databaas'}
+                  </button>
+                  
+                  {proposed && (
+                    <p className="text-xs text-emerald-600 font-medium text-center">
+                      Succes! De video staat in de wachtrij van de Databaas.
+                    </p>
+                  )}
+                </div>
+              ) : video?.status === 'pending' ? (
+                <div className="text-sm text-blue-600 bg-blue-50 border border-blue-100 p-4 rounded-lg">
+                  <p className="font-semibold mb-1">In review</p>
+                  <p>Deze video is voorgesteld door een docent en wacht op goedkeuring door de Databaas.</p>
+                </div>
               ) : video?.assessedGoals && video.assessedGoals.length > 0 ? (
                 video.assessedGoals.map((assessment, i) => (
                    <div key={i} className="p-4 bg-zinc-50 border border-zinc-200 rounded-lg">

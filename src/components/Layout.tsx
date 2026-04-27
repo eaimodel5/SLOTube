@@ -3,19 +3,22 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut } from 'lucide-react';
 
 export default function Layout() {
-  const { role, setRole } = useAuth();
+  const { role, logout } = useAuth();
 
   const teacherNav = [
-    { to: "/teacher", icon: BookOpen, label: "Home" },
-    { to: "/teacher/goals", icon: Search, label: "Zoek Kerndoel" },
+    { to: "/teacher", icon: BookOpen, label: "Ontdek & zoek" },
   ];
 
   const adminNav = [
-    { to: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-    { to: "/admin/review", icon: ShieldCheck, label: "Review Queue" },
+    { to: "/admin", icon: LayoutDashboard, label: "Admin beheer" },
+    { to: "/admin/review", icon: ShieldCheck, label: "AI keurmeester" },
   ];
 
-  const navItems = role === 'admin' ? adminNav : teacherNav;
+  const databaasNav = [
+    { to: "/admin/review", icon: ShieldCheck, label: "Databaas review" },
+  ];
+
+  const navItems = role === 'admin' ? adminNav : role === 'databaas' ? databaasNav : teacherNav;
 
   return (
     <div className="flex h-screen bg-[#f5f5f5] overflow-hidden">
@@ -26,7 +29,7 @@ export default function Layout() {
             SLO<span className="text-zinc-400">Tube</span>
           </h1>
           <p className="text-[11px] font-mono tracking-widest uppercase text-zinc-500 mt-1">
-            Educatieve Hub
+            Educatieve hub
           </p>
         </div>
         
@@ -53,15 +56,17 @@ export default function Layout() {
         {/* EAI Footer */}
         <div className="p-4 border-t border-[#e5e5e5] mt-auto">
            {/* Role Switcher (Mock) */}
-          <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">Actieve Rol</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 mb-2">Ingelogd</div>
           <button 
-            onClick={() => setRole(role === 'admin' ? 'docent' : 'admin')}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg hover:bg-zinc-100 transition mb-4"
+            onClick={() => {
+              logout();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition mb-4 group"
           >
-            <span className="font-medium text-zinc-700 capitalize">
+            <span className="font-medium text-zinc-700 group-hover:text-red-600 capitalize">
               Role: {role}
             </span>
-            <LogOut className="w-3 h-3 text-zinc-400" />
+            <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-red-600" />
           </button>
           <div className="text-center w-full pb-2">
             <span className="text-[10px] font-mono leading-tight uppercase tracking-widest text-zinc-400 block px-2">
@@ -79,10 +84,10 @@ export default function Layout() {
             SLO<span className="text-zinc-400">Tube</span>
           </h1>
           <button 
-            onClick={() => setRole(role === 'admin' ? 'docent' : 'admin')}
-            className="text-xs font-medium px-3 py-1.5 bg-zinc-100 rounded-md"
+            onClick={() => logout()}
+            className="text-xs font-medium px-3 py-1.5 bg-red-50 text-red-600 rounded-md"
           >
-            Role: {role}
+            Uitloggen
           </button>
         </header>
 

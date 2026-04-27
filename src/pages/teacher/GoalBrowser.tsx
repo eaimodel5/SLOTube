@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 
 interface Goal {
   id: string;
@@ -10,8 +10,11 @@ interface Goal {
   description: string;
 }
 
+import { isTextSimilar } from '../../lib/textUtils';
+
 export default function GoalBrowser() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -31,8 +34,19 @@ export default function GoalBrowser() {
       });
   }, [location]);
 
-  // Group goals by subject for UI
-  const groupedGoals = goals.reduce((acc, goal) => {
+  // Group goals by subject for UI, applying local search filter
+  const filteredGoals = goals.filter(goal => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      goal.sentence.toLowerCase().includes(query) ||
+      goal.subject.toLowerCase().includes(query) ||
+      goal.id.toLowerCase().includes(query) ||
+      goal.description.toLowerCase().includes(query)
+    );
+  });
+
+  const groupedGoals = filteredGoals.reduce((acc, goal) => {
     if (!acc[goal.subject]) acc[goal.subject] = [];
     acc[goal.subject].push(goal);
     return acc;
@@ -41,8 +55,21 @@ export default function GoalBrowser() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Kerndoelen</h1>
-        <p className="text-zinc-500 mt-1">Blader door de genormaliseerde SLO kerndoelen per vak.</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Officiële Kerndoelen</h1>
+        <p className="text-zinc-500 mt-1">Blader door de SLO-kerndoelen gebaseerd op het curriculum en ontdek lesmateriaal.</p>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-zinc-400" />
+        </div>
+        <input
+          type="text"
+          className="block w-full pl-10 pr-3 py-3 border border-zinc-200 rounded-xl leading-5 bg-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 sm:text-sm transition-colors"
+          placeholder="Typ om direct te zoeken in kerndoelen, vakken of codes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
       <div className="space-y-12">
@@ -70,12 +97,13 @@ export default function GoalBrowser() {
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-blue-600 mb-1">{goal.domain}</div>
                       <div className="font-semibold text-zinc-900 mb-1">
-                        {/* Capitalize first letter strictly for cleaner UI */}
                         {goal.sentence.charAt(0).toUpperCase() + goal.sentence.slice(1)}
                       </div>
-                      <div className="text-sm text-zinc-500 line-clamp-2">
-                        {goal.description}
-                      </div>
+                      {!isTextSimilar(goal.sentence, goal.description) && (
+                        <div className="text-sm text-zinc-500 line-clamp-2">
+                          {goal.description}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center justify-center pt-2">
                       <ChevronRight className="w-5 h-5 text-zinc-400" />
@@ -86,11 +114,15 @@ export default function GoalBrowser() {
             </div>
           </div>
         )})}
-        {goals.length === 0 && (
+        {goals.length === 0 ? (
           <div className="p-8 text-center text-zinc-500 text-sm">
             Laden...
           </div>
-        )}
+        ) : Object.keys(groupedGoals).length === 0 ? (
+          <div className="p-8 text-center text-zinc-500 text-sm bg-zinc-50 rounded-xl border border-dashed border-zinc-200">
+            Geen kerndoelen gevonden voor "{searchQuery}"
+          </div>
+        ) : null}
       </div>
     </div>
   );

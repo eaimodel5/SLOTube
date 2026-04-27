@@ -2,7 +2,7 @@
 
 **Ontwikkeld door: H. Visser - EAI Analyse & Advies**
 
-SLOTube is een platform voor het zoeken van educatieve videocontent, direct gekoppeld aan de officiële SLO kerndoelen. Het platform maakt gebruik van AI (Google Gemini) om de didactische waarde van video's te beoordelen en te mappen op het curriculum.
+SLOTube is een geavanceerd platform voor het cureren en ontsluiten van educatieve videocontent, direct gekoppeld aan de officiële SLO kerndoelen. Het platform maakt gebruik van AI (Google Gemini) om de didactische waarde van video's te beoordelen en te mappen op het curriculum.
 
 ## Systeemoverzicht
 

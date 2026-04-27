@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { Loader2, Video, Bot, CheckCircle, Search, ThumbsUp, XCircle } from 'lucide-react';
+import { Loader2, Video, Bot, CheckCircle, Search, ThumbsUp, XCircle, Database, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { PasswordModal } from '../../components/PasswordModal';
 
 interface Goal {
   id: string;
@@ -15,6 +16,7 @@ interface Goal {
 }
 
 export default function AdminReview() {
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingVideos, setPendingVideos] = useState<any[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,11 @@ export default function AdminReview() {
   const handleAssessAI = async () => {
     if (!selectedVideo || !selectedGoalId) return;
     
+    if (sessionStorage.getItem('eai_auth') !== 'true') {
+      setShowPasswordModal(true);
+      return;
+    }
+
     const goal = goals.find(g => g.id === selectedGoalId);
     if (!goal) return;
 
@@ -66,14 +73,15 @@ export default function AdminReview() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ video: selectedVideo, goal })
       });
+      const data = await resp.json();
       if (resp.ok) {
-        const result = await resp.json();
-        setAssessment(result);
+        setAssessment(data);
       } else {
-        alert("Kon de AI Beoordeling niet uitvoeren.");
+        alert(data.error || "Kon de AI Beoordeling niet uitvoeren.");
       }
     } catch(e) {
       console.error(e);
+      alert("Er is een netwerkfout opgetreden bij de AI assessment.");
     }
     setIsAssessing(false);
   };
@@ -110,141 +118,241 @@ export default function AdminReview() {
   };
 
   if (loading) {
-     return <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin inline mx-auto"/></div>
+     return (
+       <div className="flex-1 min-h-[50vh] flex flex-col items-center justify-center">
+         <Loader2 className="w-8 h-8 animate-spin text-zinc-400 mb-4"/>
+         <p className="text-sm font-medium text-zinc-500">Wachtrij ophalen...</p>
+       </div>
+     );
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">AI Keurmeester</h1>
-        <p className="text-zinc-500 mt-1">Beoordeel opgeslagen video's met AI-ondersteuning, koppel ze aan een SLO kerndoel en sla ze lokaal op voor docenten.</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className="min-h-screen bg-zinc-50/50 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         
-        {/* Left Column: Pending Queue */}
-        <div className="lg:col-span-5 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[700px]">
-          <div className="p-4 border-b border-zinc-200 bg-zinc-50">
-            <h2 className="font-semibold text-zinc-900">Wachtrij Database ({pendingVideos.length})</h2>
-          </div>
-          <div className="flex-1 overflow-y-auto divide-y divide-zinc-100">
-            {pendingVideos.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500 text-sm">
-                Geen video's in de wachtrij. Gebruik de Pre-Scraper om video's klaar te zetten.
+        {/* Header */}
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-200">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+                 <ShieldCheck className="w-6 h-6 text-zinc-900" />
               </div>
-            ) : pendingVideos.map(video => (
-              <div 
-                key={video.videoId} 
-                className={`p-4 cursor-pointer hover:bg-zinc-50 transition-colors flex gap-4 ${selectedVideo?.videoId === video.videoId ? 'bg-blue-50/50 border-l-4 border-blue-500 pl-3' : 'border-l-4 border-transparent'}`}
-                onClick={() => {
-                  setSelectedVideo(video); 
-                  setAssessment(null);
-                  setSelectedGoalId(''); // Reset goal selection
-                }}
-              >
-                <img src={video.thumbnailUrl} className="w-20 h-auto rounded object-cover" />
-                <div>
-                  <div className="text-sm font-semibold text-zinc-900 line-clamp-2">{video.title}</div>
-                  <div className="text-xs text-zinc-500 mt-1">{video.channelTitle}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Column: AI Assessor */}
-        <div className="lg:col-span-7">
-          {!selectedVideo ? (
-            <div className="bg-zinc-50 border border-zinc-200 rounded-xl shadow-sm h-full flex flex-col items-center justify-center p-8 text-center text-zinc-500 border-dashed">
-              <Video className="w-12 h-12 mb-4 text-zinc-300" />
-              <p>Selecteer een video uit de wachtrij om de beoordeling te starten.</p>
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Keurmeester Dashboard</h1>
             </div>
-          ) : (
-            <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-              <div className="p-6 border-b border-zinc-200">
-                <div className="flex gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-semibold text-zinc-900">{selectedVideo.title}</h2>
-                    <p className="text-sm text-zinc-500 mt-1">Door {selectedVideo.channelTitle}</p>
+             <p className="text-zinc-500 text-sm max-w-2xl leading-relaxed">
+              Beoordeel opgeslagen bronnen, koppel ze aan kerndoelen en keur ze goed voor docentengebruik.
+            </p>
+            {sessionStorage.getItem('databaas_name') && (
+               <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg shadow-sm">
+                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                 <span className="text-xs font-semibold text-indigo-800">
+                   Actief als: {sessionStorage.getItem('databaas_name')}
+                 </span>
+               </div>
+            )}
+          </div>
+          <div className="flex">
+             <button 
+              onClick={() => navigate('/admin')}
+              className="px-5 py-2.5 bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-700 hover:text-zinc-900 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center gap-2"
+            >
+              Terug naar Beheersysteem
+            </button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Column: Pending Queue */}
+          <div className="lg:col-span-4 bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-auto lg:h-[700px]">
+            <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50 flex items-center justify-between">
+              <h2 className="font-semibold text-zinc-900">Wachtrij</h2>
+              <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-md">{pendingVideos.length} Items</span>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-[300px] max-h-[600px] lg:max-h-full">
+              {pendingVideos.length === 0 ? (
+                <div className="p-8 text-center text-zinc-500 text-sm flex flex-col items-center justify-center h-full">
+                  <CheckCircle className="w-10 h-10 text-zinc-300 mb-3" />
+                  <p className="font-medium text-zinc-900 mb-1">Alles is weggewerkt!</p>
+                  <p className="text-xs">Gebruik de Pre-Scraper om nieuwe bronnen te vinden.</p>
+                </div>
+              ) : pendingVideos.map(video => (
+                <div 
+                  key={video.videoId} 
+                  className={`p-4 cursor-pointer hover:bg-zinc-50 transition-colors flex gap-4 border-b border-zinc-100 last:border-0 ${selectedVideo?.videoId === video.videoId ? 'bg-blue-50/30' : ''}`}
+                  onClick={() => {
+                    setSelectedVideo(video); 
+                    setAssessment(null);
+                    setSelectedGoalId('');
+                  }}
+                >
+                  <div className="w-20 h-14 bg-zinc-100 rounded-lg overflow-hidden relative shrink-0 border border-zinc-200 shadow-sm">
+                    <img src={video.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover" alt="" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent h-6" />
+                    {video.sourceType === 'website' && (
+                      <Database className="w-4 h-4 text-white absolute bottom-1 right-1" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className={`text-sm font-semibold line-clamp-2 ${selectedVideo?.videoId === video.videoId ? 'text-blue-700' : 'text-zinc-900'}`}>{video.title}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-500 mt-1 truncate font-medium">{video.channelTitle}</div>
                   </div>
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
 
-              <div className="p-6 space-y-6">
+          {/* Right Column: AI Assessor */}
+          <div className="lg:col-span-8 space-y-6">
+            {!selectedVideo ? (
+              <div className="bg-white border-2 border-dashed border-zinc-200 rounded-3xl h-[400px] lg:h-[700px] flex flex-col items-center justify-center p-8 text-center text-zinc-500 shadow-sm">
+                <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center border border-zinc-100 mb-4 shadow-sm">
+                   <Video className="w-8 h-8 text-zinc-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-zinc-900 mb-2">Selecteer een Bron</h3>
+                <p className="max-w-md mx-auto text-sm">Klik op een item uit de wachtrij aan de linkerkant om de video of het artikel te beoordelen.</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
                 
-                {/* Doel Selectie */}
-                <div>
-                  <label className="block text-sm font-medium text-zinc-900 mb-2">1. Kies het gewenste SLO Kerndoel</label>
-                  <select 
-                    value={selectedGoalId} 
-                    onChange={e => setSelectedGoalId(e.target.value)}
-                    className="w-full p-3 border border-zinc-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                  >
-                    <option value="">-- Selecteer een doel --</option>
-                    {goals.map(g => (
-                      <option key={g.id} value={g.id}>{g.id}: {g.subject} - {g.sentence?.substring(0, 50)}...</option>
-                    ))}
-                  </select>
+                <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50">
+                  <h2 className="text-lg font-bold text-zinc-900 leading-snug">{selectedVideo.title}</h2>
+                  <p className="text-sm font-medium text-zinc-500 mt-1 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span> 
+                    {selectedVideo.channelTitle}
+                  </p>
                 </div>
 
-                {/* AI Actie Knop */}
-                <button 
-                  onClick={handleAssessAI}
-                  disabled={!selectedGoalId || isAssessing}
-                  className="w-full p-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
-                >
-                  {isAssessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
-                  Laat Gemini AI dit evalueren
-                </button>
-
-                {/* AI Result */}
-                {assessment && (
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 mt-4 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-full -mr-4 -mt-4" />
-                    
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-full bg-white border-2 border-blue-200 flex items-center justify-center shadow-sm">
-                        <span className={`text-2xl font-bold ${assessment.score > 70 ? 'text-emerald-600' : assessment.score > 40 ? 'text-amber-500' : 'text-red-500'}`}>
-                          {assessment.score}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-blue-900">AI Match Score</div>
-                        <div className="text-sm text-blue-700">Gebaseerd op officiële SLO matrices</div>
-                      </div>
+                {/* Player/Preview */}
+                {selectedVideo.sourceType === 'website' || selectedVideo.duration === 'Web/Bron' ? (
+                  <div className="aspect-video bg-zinc-50 flex flex-col items-center justify-center relative p-8 text-center border-b border-zinc-200">
+                     <img src={selectedVideo.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
+                     <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 z-10 border border-zinc-200">
+                       <Database className="w-8 h-8 text-zinc-400" />
+                     </div>
+                     <h3 className="text-zinc-900 font-bold text-lg z-10 mb-2">Externe Webpagina</h3>
+                     <p className="text-sm text-zinc-600 z-10 max-w-md mx-auto mb-6">Dit materiaal kan niet direct hier worden ingesloten. Open de bron via onderstaande knop om deze te bekijken.</p>
+                     <a href={selectedVideo.videoId} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-zinc-900 text-white rounded-xl shadow-sm font-semibold hover:bg-zinc-800 z-10 transition-colors flex items-center gap-2">
+                       Open in Nieuw Venster <ChevronRight className="w-4 h-4 opacity-70" />
+                     </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col border-b border-zinc-200">
+                    <div className="aspect-video bg-black flex flex-col items-center justify-center text-zinc-500 relative">
+                      <iframe 
+                        className="w-full h-full"
+                        src={`https://www.youtube.com/embed/${selectedVideo.videoId.includes('youtube.com') || selectedVideo.videoId.includes('youtu.be') ? (selectedVideo.videoId.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || selectedVideo.videoId) : selectedVideo.videoId}?origin=${window.location.origin}`} 
+                        title="YouTube video player" 
+                        frameBorder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowFullScreen>
+                      </iframe>
                     </div>
-                    
-                    <div className="text-sm text-blue-900/80 leading-relaxed bg-white/60 p-4 rounded-lg">
-                      {assessment.feedback}
-                    </div>
-
-                    <div className="flex gap-4 mt-6">
-                      <button 
-                        onClick={() => handleDecide('approved')}
-                        disabled={isSaving}
-                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                      >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <CheckCircle className="w-4 h-4"/>}
-                        Vrijgeven voor Docenten
-                      </button>
-                      <button 
-                        onClick={() => handleDecide('rejected')}
-                        disabled={isSaving}
-                        className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 p-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Afkeuren (Dump)
-                      </button>
-                    </div>
-
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-        </div>
 
+                <div className="p-6 md:p-8 space-y-8 bg-white">
+                  
+                  {/* Step 1: Goal */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">1</div>
+                      <h3 className="text-sm font-bold text-zinc-900">Kies het SLO kerndoel</h3>
+                    </div>
+                    <select 
+                      value={selectedGoalId} 
+                      onChange={e => setSelectedGoalId(e.target.value)}
+                      className="w-full px-4 py-3.5 border border-zinc-200 rounded-xl text-sm bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 text-zinc-900 transition-colors shadow-sm"
+                    >
+                      <option value="">-- Selecteer het best passende leerdoel --</option>
+                      {goals.map(g => (
+                        <option key={g.id} value={g.id}>{g.id}: {g.subject} - {g.sentence?.substring(0, 90)}...</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Step 2: AI */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">2</div>
+                      <h3 className="text-sm font-bold text-zinc-900">AI Kwaliteitscontrole</h3>
+                    </div>
+                    
+                    <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-200">
+                      <p className="text-sm text-zinc-600 mb-4 max-w-xl">Laat de AI controleren of de gekozen bron goed aansluit bij het gezochte SLO kerndoel. Verwacht een inhoudelijke analyse.</p>
+                      
+                      <button 
+                        onClick={handleAssessAI}
+                        disabled={!selectedGoalId || isAssessing}
+                        className="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors text-sm shadow-sm"
+                      >
+                        {isAssessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
+                        {isAssessing ? 'AI model is aan het beoordelen...' : 'Start Analyse'}
+                      </button>
+
+                      {assessment && (
+                        <div className="mt-5 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm animate-in slide-in-from-top-2">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-4">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl border ${assessment.score > 70 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : assessment.score > 40 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                              {assessment.score}%
+                            </div>
+                            <div>
+                              <div className="font-bold text-zinc-900">Compatibiliteitsscore</div>
+                              <div className="text-xs font-medium text-zinc-500 mt-0.5">SLO Inhoudelijke match</div>
+                            </div>
+                          </div>
+                          
+                          <div className="text-sm text-zinc-700 leading-relaxed text-justify whitespace-pre-wrap">
+                            {assessment.feedback}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 3: Decision */}
+                  <div className="pt-6 border-t border-zinc-200 space-y-4">
+                     <div className="flex items-center gap-2 mb-1">
+                      <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">3</div>
+                      <h3 className="text-sm font-bold text-zinc-900">Definitieve Actie</h3>
+                    </div>
+                     
+                     <div className="flex flex-col sm:flex-row gap-3">
+                        <button 
+                          onClick={() => handleDecide('approved')}
+                          disabled={isSaving || !selectedGoalId}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm shadow-sm"
+                        >
+                          {isSaving ? <Loader2 className="w-5 h-5 animate-spin"/> : <CheckCircle className="w-5 h-5"/>}
+                          Keur Goed & Koppel
+                        </button>
+                        <button 
+                          onClick={() => handleDecide('rejected')}
+                          disabled={isSaving}
+                          className="flex-1 bg-white border-2 border-zinc-200 text-zinc-700 hover:bg-zinc-50 py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm"
+                        >
+                          <XCircle className="w-5 h-5" />
+                          Afkeuren & Verwijderen
+                        </button>
+                     </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
       </div>
+
+      <PasswordModal 
+        isOpen={showPasswordModal}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+          handleAssessAI();
+        }}
+        onClose={() => setShowPasswordModal(false)}
+      />
     </div>
   );
 }

@@ -25,6 +25,14 @@ service cloud.firestore {
             && data.status is string && data.status.matches('^(pending|approved|rejected)$');
     }
 
+    match /databaas_codes/{codeId} {
+      allow read, write: if isAllowed();
+    }
+    
+    match /system_config/{configId} {
+      allow read, write: if isAllowed();
+    }
+    
     match /videos/{videoId} {
       allow read: if isAllowed();
       
