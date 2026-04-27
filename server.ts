@@ -76,7 +76,7 @@ async function startServer() {
 
   // YouTube Search API Integration & URL fallback
   app.post("/api/scrape", async (req, res) => {
-    const { url } = req.body;
+    const { url, goal } = req.body;
     if (!url) {
       return res.status(400).json({ error: "No URL provided." });
     }
@@ -97,6 +97,28 @@ async function startServer() {
       let domain = "";
       try { domain = new URL(url).hostname; } catch(e){}
 
+      let matchScore = 0;
+      let matchReason = "";
+      let matchEvidence: string[] = [];
+
+      if (goal) {
+          const raw = {
+              sourceId: "web",
+              sourceName: domain || "Externe Bron",
+              sourceUrl: url,
+              title: title,
+              description: description,
+              thumbnailUrl: thumbnailUrl,
+              channelTitle: domain || "Externe Bron",
+              duration: "Web/Bron",
+              publishedAt: new Date().toISOString()
+          };
+          const match = matchVideoToGoal(raw, goal);
+          matchScore = match.score;
+          matchReason = match.reason;
+          matchEvidence = match.evidence;
+      }
+
       // create a generic video object format to reuse the UI
       const result = {
         id: encodeURIComponent(url), // Safely URL-encode the ID so router path is not broken
@@ -107,7 +129,9 @@ async function startServer() {
         duration: "Web/Bron",
         publishedAt: new Date().toISOString(),
         status: "pending",
-        matchScore: 80,
+        matchScore: matchScore,
+        matchReason: matchReason,
+        matchEvidence: matchEvidence,
         thumbnailUrl: thumbnailUrl || `https://ui-avatars.com/api/?name=${domain}&background=ffffff&color=000000&size=512`,
         viewCount: "-",
         sourceType: "website"
