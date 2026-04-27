@@ -8,7 +8,7 @@ export const npoProvider: DiscoveryProvider = {
     const results: RawCandidate[] = [];
     for (const q of activeQueries) {
       if (!q?.text) continue;
-      const res = await webSearch(q.text, "npo", "NPO", ""); // Without site restrict sometimes or with "npo.nl"
+      const res = await webSearch(q.text, "npo", "NPO", "npo.nl"); // NPO Start / NPO Klassiek etc.
       results.push(...res);
     }
     return results;

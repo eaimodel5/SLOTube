@@ -27,6 +27,11 @@ interface Video {
   duration: string;
   publishedAt: string;
   status: string;
+  provider?: string;
+  sourceType?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  origin?: string;
   assessedGoals?: {goalId: string, matchScore: number}[];
   thumbnailUrl: string;
 }

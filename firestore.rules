@@ -13,10 +13,24 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
-    // For MVP, since we do not have an actual Google SignIn flow fully connected to users, 
-    // we allow global read/write for now to prevent blocking development. 
-    // In production, this must be `request.auth != null`.
+    // ==========================================
+    // DEV ONLY: OPEN ACCESS
+    // For MVP/Demo purposes, we allow global read/write.
+    // ==========================================
     function isAllowed() { return true; } 
+
+    // ==========================================
+    // PRODUCTION TEMPLATE (commented out)
+    // ==========================================
+    // function isAuthenticated() { return request.auth != null; }
+    // function isAdmin() { 
+    //    return isAuthenticated() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); 
+    // }
+    // 
+    // Then in the rules:
+    // allow update: if isAdmin() && ...
+    // allow create: if isAuthenticated() && ...
+    // ==========================================
     
     function isValidVideo(data) {
         return data.keys().hasAll(['id', 'title', 'status', 'origin'])
