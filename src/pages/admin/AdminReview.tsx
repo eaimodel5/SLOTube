@@ -92,7 +92,7 @@ export default function AdminReview() {
     if (!selectedVideo) return;
     setIsSaving(true);
     try {
-      const ref = doc(db, "videos", selectedVideo.firestoreId || selectedVideo.id || selectedVideo.videoId);
+      const ref = doc(db, "videos", selectedVideo.id || selectedVideo.firestoreId || selectedVideo.videoId);
       
       const payload: any = { status: decision };
       
@@ -121,7 +121,7 @@ export default function AdminReview() {
       await updateDoc(ref, payload);
       
       // Remove from visual list
-      setPendingVideos(prev => prev.filter(v => v.videoId !== selectedVideo.videoId));
+      setPendingVideos(prev => prev.filter(v => (v.id || v.videoId) !== (selectedVideo.id || selectedVideo.videoId)));
       setSelectedVideo(null);
       setAssessment(null);
       setSelectedGoalId('');
@@ -232,35 +232,51 @@ export default function AdminReview() {
               <div className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
                 
                 <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">
+                      Bron ID: {selectedVideo.sourceId} • Herkomst: {selectedVideo.origin}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400">ID: {selectedVideo.id}</span>
+                  </div>
                   <h2 className="text-lg font-bold text-zinc-900 leading-snug">{selectedVideo.title}</h2>
                   <p className="text-sm font-medium text-zinc-500 mt-1 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300"></span> 
-                    {selectedVideo.channelTitle}
+                    <span className={`w-2 h-2 rounded-full ${selectedVideo.provider === 'youtube' ? 'bg-red-500' : 'bg-blue-500'}`}></span> 
+                    {selectedVideo.channelTitle || selectedVideo.sourceName}
                   </p>
                   
-                  {selectedVideo.matchReason && (
+                  {(selectedVideo.matchReason || selectedVideo.goalSnapshot) && (
                     <div className="mt-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-                      <p className="text-sm text-emerald-800 font-semibold mb-1">Automatische voorselectie (Score: {selectedVideo.matchScore}%)</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm text-emerald-800 font-semibold">Automatische match (Score: {selectedVideo.matchScore}%)</p>
+                        {selectedVideo.goalSnapshot && (
+                           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Gekoppeld aan: {selectedVideo.goalSnapshot.id}</span>
+                        )}
+                      </div>
                       <p className="text-xs text-emerald-700">{selectedVideo.matchReason}</p>
+                      {selectedVideo.goalSnapshot && (
+                         <p className="text-[10px] text-emerald-600 italic mt-1 font-medium italic">"{selectedVideo.goalSnapshot.sentence}"</p>
+                      )}
                       {selectedVideo.matchEvidence && selectedVideo.matchEvidence.length > 0 && (
-                        <p className="text-xs text-emerald-600/80 mt-1">Gevonden termen: {selectedVideo.matchEvidence.join(', ')}</p>
+                        <p className="text-[10px] text-emerald-600/80 mt-1 font-mono uppercase">Bewijs: {selectedVideo.matchEvidence.join(', ')}</p>
                       )}
                     </div>
                   )}
                 </div>
 
                 {/* Player/Preview */}
-                {selectedVideo.sourceType === 'website' || selectedVideo.duration === 'Web/Bron' ? (
+                {selectedVideo.provider === 'web' || selectedVideo.sourceType === 'website' || selectedVideo.duration === 'Web/Bron' ? (
                   <div className="aspect-video bg-zinc-50 flex flex-col items-center justify-center relative p-8 text-center border-b border-zinc-200">
                      <img src={selectedVideo.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 z-10 border border-zinc-200">
                        <Database className="w-8 h-8 text-zinc-400" />
                      </div>
-                     <h3 className="text-zinc-900 font-bold text-lg z-10 mb-2">Externe Webpagina</h3>
-                     <p className="text-sm text-zinc-600 z-10 max-w-md mx-auto mb-6">Dit materiaal kan niet direct hier worden ingesloten. Open de bron via onderstaande knop om deze te bekijken.</p>
-                     <a href={selectedVideo.videoId} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-zinc-900 text-white rounded-xl shadow-sm font-semibold hover:bg-zinc-800 z-10 transition-colors flex items-center gap-2">
-                       Open in Nieuw Venster <ChevronRight className="w-4 h-4 opacity-70" />
-                     </a>
+                     <h3 className="text-zinc-900 font-bold text-lg z-10 mb-2">Webbron: {selectedVideo.sourceName}</h3>
+                     <p className="text-sm text-zinc-600 z-10 max-w-md mx-auto mb-6">Dit materiaal bevindt zich op een externe website. Controleer de inhoud voor educatieve geschiktheid.</p>
+                     <div className="flex gap-3 z-10">
+                        <a href={selectedVideo.sourceUrl || selectedVideo.videoId} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-zinc-900 text-white rounded-xl shadow-sm font-semibold hover:bg-zinc-800 transition-colors flex items-center gap-2">
+                          Open Bron <ChevronRight className="w-4 h-4 opacity-70" />
+                        </a>
+                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col border-b border-zinc-200">

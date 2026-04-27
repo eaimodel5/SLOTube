@@ -1,50 +1,116 @@
-import type { Goal, VideoCandidate } from "../../types";
-import { tokenize, normalizeText } from "../text/normalizeText";
+import { NormalizedSloGoal } from "../slo/sloTypes";
+import { SCORING_CONFIG } from "./scoringConfig";
 
-const NEGATIVE_TERMS = ["trailer", "gameplay", "reaction", "muziek", "song", "lyrics"];
-
-export interface MatchResult {
+export type MatchResult = {
   score: number;
+  confidence: "low" | "medium" | "high";
   reason: string;
   evidence: string[];
+  matchedFields: string[];
+  penalties: string[];
+};
+
+function normalize(text?: string): string {
+  if (!text) return "";
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 }
 
-export function matchVideoToGoal(video: VideoCandidate, goal: Goal): MatchResult {
-  const goalText = [
-    goal.subject,
-    goal.domain,
-    goal.sentence,
-    goal.description,
-    ...(goal.examples || []),
-    ...(goal.elaborations || [])
-  ].join(" ");
+function contains(source: string, target: string): boolean {
+  return normalize(source).includes(normalize(target));
+}
 
-  const videoText = [video.title, video.description, video.channelTitle, video.sourceName].join(" ");
-
-  const goalTokens = new Set(tokenize(goalText));
-  const videoTokens = new Set(tokenize(videoText));
-
-  const overlap = [...goalTokens].filter((token) => videoTokens.has(token));
-  const titleTokens = new Set(tokenize(video.title));
-  const titleOverlap = [...goalTokens].filter((token) => titleTokens.has(token));
-
+export function matchVideoToGoal(video: any, goal: NormalizedSloGoal): MatchResult {
   let score = 0;
-  score += Math.min(45, overlap.length * 5);
-  score += Math.min(25, titleOverlap.length * 8);
+  const evidence: string[] = [];
+  const matchedFields: string[] = [];
+  const penalties: string[] = [];
 
-  if (goal.domain && normalizeText(videoText).includes(normalizeText(goal.domain))) score += 10;
-  if (goal.subject && normalizeText(videoText).includes(normalizeText(goal.subject))) score += 8;
-  if (video.sourceName && ["schooltv", "het klokhuis"].includes(normalizeText(video.sourceName))) score += 7;
+  const videoTitle = video.title || "";
+  const videoDesc = video.description || "";
+  const videoFullText = `${videoTitle} ${videoDesc}`;
 
-  const negativeHits = NEGATIVE_TERMS.filter((term) => normalizeText(videoText).includes(term));
-  score -= negativeHits.length * 12;
+  // 1. Match with Sentence
+  if (contains(videoTitle, goal.sentence)) {
+    score += SCORING_CONFIG.WEIGHTS.TITLE_SENTENCE;
+    matchedFields.push("sentence (title)");
+    evidence.push("Titel matcht direct met kerndoelzin");
+  } else if (contains(videoDesc, goal.sentence)) {
+    score += SCORING_CONFIG.WEIGHTS.DESCRIPTION_SENTENCE;
+    matchedFields.push("sentence (description)");
+    evidence.push("Beschrijving matcht met kerndoelzin");
+  }
 
-  score = Math.max(0, Math.min(100, Math.round(score)));
+  // 2. Match with Domain & Subject
+  if (goal.domain && contains(videoFullText, goal.domain)) {
+    score += SCORING_CONFIG.WEIGHTS.DOMAIN_MATCH;
+    matchedFields.push("domain");
+    evidence.push(`Match op domein: ${goal.domain}`);
+  }
+  if (goal.subject && contains(videoFullText, goal.subject)) {
+    score += SCORING_CONFIG.WEIGHTS.SUBJECT_MATCH;
+    matchedFields.push("subject");
+  }
 
-  const evidence = overlap.slice(0, 8);
-  const reason = evidence.length > 0
-    ? `Match op termen: ${evidence.join(", ")}.`
-    : "Weinig duidelijke overlap met het kerndoel.";
+  // 3. Match with Elaborations & Illustrations
+  const allContext = [...goal.elaborations, ...goal.baseUitwerkingen, ...goal.hvwoUitwerkingen];
+  for (const item of allContext) {
+    if (contains(videoFullText, item)) {
+      score += SCORING_CONFIG.WEIGHTS.ELABORATION_MATCH;
+      matchedFields.push("elaboration");
+      evidence.push(`Gevonden uitwerking: ${item.slice(0, 30)}...`);
+      break; 
+    }
+  }
 
-  return { score, reason, evidence };
+  const allIllustrations = [...goal.examples, ...goal.baseIllustraties, ...goal.hvwoIllustraties];
+  for (const item of allIllustrations) {
+    if (contains(videoFullText, item)) {
+      score += SCORING_CONFIG.WEIGHTS.ILLUSTRATION_MATCH;
+      matchedFields.push("illustration");
+      evidence.push(`Gevonden voorbeeld/illustratie: ${item.slice(0, 30)}...`);
+      break;
+    }
+  }
+
+  // 4. Actor/Target Group
+  if (goal.actor && contains(videoFullText, goal.actor)) {
+    score += SCORING_CONFIG.WEIGHTS.ACTOR_MATCH;
+    matchedFields.push("actor");
+  }
+
+  // 5. Penalties
+  SCORING_CONFIG.NEGATIVE_TERMS.forEach(term => {
+    if (contains(videoFullText, term)) {
+      score += SCORING_CONFIG.PENALTIES.NON_EDUCATIONAL;
+      penalties.push(`Negatieve term gevonden: ${term}`);
+    }
+  });
+
+  if (!video.description || video.description.length < 20) {
+    score += SCORING_CONFIG.PENALTIES.MISSING_DESCRIPTION;
+    penalties.push("Korte of missende beschrijving");
+  }
+
+  // Final score normalization
+  score = Math.max(0, Math.min(100, score));
+
+  // Confidence calculation
+  let confidence: "low" | "medium" | "high" = "low";
+  if (score > 70) confidence = "high";
+  else if (score > 40) confidence = "medium";
+
+  // Reason generation
+  let reason = "Onvoldoende duidelijke match gevonden.";
+  if (evidence.length > 0) {
+    reason = evidence.join(". ");
+  }
+
+  return {
+    score,
+    confidence,
+    reason,
+    evidence,
+    matchedFields,
+    penalties
+  };
 }

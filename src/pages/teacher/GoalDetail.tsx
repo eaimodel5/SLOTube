@@ -140,6 +140,8 @@ export default function GoalDetail() {
     if (!goal) return;
     if (sessionStorage.getItem('eai_auth') !== 'true') {
       setShowPasswordModal(true);
+      // Store that we were trying to do discovery
+      sessionStorage.setItem('pending_action', 'discovery');
       return;
     }
 
@@ -149,11 +151,17 @@ export default function GoalDetail() {
       const resp = await fetch('/api/discovery/goal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal, limit: 10, useAi: false })
+        body: JSON.stringify({ 
+          goal, 
+          options: { 
+            maxResults: 12,
+            useAi: false 
+          } 
+        })
       });
       const data = await resp.json();
       if (resp.ok) {
-        setDiscoveryCandidates(data.candidates);
+        setDiscoveryCandidates(data.results);
       } else {
         alert(data.error || "Mislukt om suggesties te zoeken.");
       }
@@ -167,20 +175,20 @@ export default function GoalDetail() {
 
   const handleSendToReview = async (candidate: any) => {
     try {
-      // Check if it already exists in database
-      const q = query(collection(db, "videos"), where("videoId", "==", candidate.videoId), where("goalId", "==", id));
+      // Check if it already exists in database using canonicalUrl
+      const q = query(collection(db, "videos"), where("canonicalUrl", "==", candidate.canonicalUrl), where("goalId", "==", id));
       const snap = await getDocs(q);
       if (!snap.empty) {
-        alert("Deze video staat al in de database voor dit kerndoel (misschien onder review of al beoordeeld).");
+        alert("Deze video staat al in de database voor dit kerndoel.");
         return;
       }
 
-      const docRef = await import('firebase/firestore').then(({ addDoc, collection, serverTimestamp }) => {
-        return addDoc(collection(db, "videos"), {
+      await import('firebase/firestore').then(({ setDoc, doc, serverTimestamp }) => {
+        return setDoc(doc(db, "videos", candidate.id), {
           ...candidate,
           goalId: id,
           status: "pending",
-          origin: candidate.origin || "discovery",
+          origin: "discovery",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -189,7 +197,7 @@ export default function GoalDetail() {
       alert("Video is succesvol naar de review gestuurd!");
       
       // Remove from list
-      setDiscoveryCandidates(prev => prev ? prev.filter(c => c.videoId !== candidate.videoId) : null);
+      setDiscoveryCandidates(prev => prev ? prev.filter(c => c.id !== candidate.id) : null);
       
     } catch(e) {
       console.error(e);
@@ -503,7 +511,12 @@ export default function GoalDetail() {
         isOpen={showPasswordModal}
         onSuccess={() => {
           setShowPasswordModal(false);
-          handleLiveSearch();
+          if (sessionStorage.getItem('pending_action') === 'discovery') {
+            sessionStorage.removeItem('pending_action');
+            handleDiscovery();
+          } else {
+            handleLiveSearch();
+          }
         }}
         onClose={() => setShowPasswordModal(false)}
       />

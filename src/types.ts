@@ -10,37 +10,41 @@ export interface Goal {
 }
 
 export interface VideoCandidate {
-  id?: string;
-  videoId: string;
+  id: string; // Internal stable ID
+  videoId?: string; // Original provider ID (e.g. YouTube ID)
   title: string;
   description?: string;
-  url: string;
-  thumbnailUrl?: string;
+  sourceUrl: string;
+  canonicalUrl: string;
+  thumbnailUrl: string;
+  thumbnailStatus: string;
   channelTitle?: string;
-  sourceId?: string;
-  sourceName?: string;
-  provider?: "youtube" | "web" | "rss" | "manual";
+  sourceId: string;
+  sourceName: string;
+  provider: "youtube" | "web" | "rss" | "manual";
   durationSeconds?: number;
+  duration?: string;
   publishedAt?: string;
-  matchScore?: number;
-  matchReason?: string;
-  matchEvidence?: string[];
-  assessedGoals?: string[];
-  origin?: "manual" | "youtube_search" | "web_import" | "discovery";
-  status?: "pending" | "approved" | "rejected";
-  createdAt?: any;
-  updatedAt?: any;
-  duration?: string; // sometimes used in existing code
-  sourceType?: string; // sometimes used
+  
+  status: "pending" | "approved" | "rejected";
+  origin: "manual" | "youtube_search" | "web_search" | "discovery";
+  
+  matchScore: number;
+  matchConfidence: "low" | "medium" | "high";
+  matchReason: string;
+  matchEvidence: string[];
+  matchPenalties: string[];
+  
+  aiAssessment?: any;
+  goalSnapshot?: any;
 }
 
 export interface StoredVideo extends VideoCandidate {
-  id: string; // explicitly required when stored
   goalId: string;
-  status: "pending" | "approved" | "rejected";
-  origin: "manual" | "youtube_search" | "web_import" | "discovery";
-  submittedBy?: string;
-  reviewedBy?: string;
+  createdAt: any;
+  updatedAt: any;
   reviewedAt?: any;
+  reviewedBy?: string;
   rejectReason?: string;
+  submittedBy?: string;
 }

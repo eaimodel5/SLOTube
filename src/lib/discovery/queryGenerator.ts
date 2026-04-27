@@ -1,30 +1,98 @@
-import type { Goal } from "../../types";
+import { NormalizedSloGoal } from "../slo/sloTypes";
 
-function compact(values: Array<string | undefined | null>): string[] {
-  return values.map((v) => String(v || "").trim()).filter(Boolean);
+export type QueryGroup =
+  | "basis"
+  | "domein"
+  | "uitwerking"
+  | "illustratie"
+  | "niveau"
+  | "bronSpecifiek";
+
+export interface GeneratedQuery {
+  text: string;
+  group: QueryGroup;
+  priority: number;
 }
 
-export function generateQueriesForGoal(goal: Goal): string[] {
-  const base = compact([
-    goal.subject,
-    goal.domain,
-    goal.sentence,
-    goal.description
-  ]);
+function clean(text?: string): string {
+  if (!text) return "";
+  return text.trim().replace(/\s+/g, " ");
+}
 
-  const examples = Array.isArray(goal.examples) ? goal.examples.slice(0, 3) : [];
-  const elaborations = Array.isArray(goal.elaborations) ? goal.elaborations.slice(0, 3) : [];
+export function generateQueriesForGoal(goal: NormalizedSloGoal): GeneratedQuery[] {
+  const queries: GeneratedQuery[] = [];
 
-  const queries = [
-    compact([goal.subject, goal.domain]).join(" "),
-    compact([goal.subject, goal.sentence]).join(" "),
-    compact([goal.domain, goal.description]).join(" "),
-    ...examples.map((x) => compact([goal.subject, x]).join(" ")),
-    ...elaborations.map((x) => compact([goal.subject, x]).join(" ")),
-    compact([goal.subject, goal.domain, "uitleg leerlingen"]).join(" "),
-    compact([goal.domain, "schooltv"]).join(" "),
-    compact([goal.domain, "klokhuis"]).join(" ")
-  ];
+  // Group: Basis
+  if (goal.subject && goal.domain) {
+    queries.push({
+      text: `${goal.subject} ${goal.domain}`,
+      group: "basis",
+      priority: 100
+    });
+  }
+  
+  if (goal.sentence) {
+    queries.push({
+      text: goal.sentence,
+      group: "basis",
+      priority: 95
+    });
+  }
 
-  return Array.from(new Set(queries.map((q) => q.trim()).filter((q) => q.length >= 4))).slice(0, 10);
+  // Group: Domein + Details
+  if (goal.domain && goal.description) {
+    queries.push({
+      text: `${goal.domain} ${goal.description.slice(0, 50)}`,
+      group: "domein",
+      priority: 80
+    });
+  }
+
+  // Group: Uitwerkingen (Rijke SLO data)
+  const allUitwerkingen = [...goal.elaborations, ...goal.baseUitwerkingen, ...goal.hvwoUitwerkingen];
+  allUitwerkingen.slice(0, 3).forEach((u, i) => {
+    queries.push({
+      text: `${goal.subject} ${u}`,
+      group: "uitwerking",
+      priority: 90 - i
+    });
+  });
+
+  // Group: Illustraties
+  const allIllustraties = [...goal.examples, ...goal.baseIllustraties, ...goal.hvwoIllustraties];
+  allIllustraties.slice(0, 2).forEach((ill, i) => {
+    queries.push({
+      text: `${goal.subject} ${ill}`,
+      group: "illustratie",
+      priority: 85 - i
+    });
+  });
+
+  // Group: Niveau / Doelgroep
+  if (goal.actor && goal.sentence) {
+    queries.push({
+      text: `${goal.sentence} voor ${goal.actor}`,
+      group: "niveau",
+      priority: 70
+    });
+  }
+
+  // Group: Bron Specifiek
+  if (goal.domain) {
+    queries.push({ text: `${goal.domain} schooltv`, group: "bronSpecifiek", priority: 60 });
+    queries.push({ text: `${goal.domain} klokhuis`, group: "bronSpecifiek", priority: 60 });
+    queries.push({ text: `${goal.domain} wikiwijs`, group: "bronSpecifiek", priority: 55 });
+  }
+
+  // Filter out duplicates and ensure valid length
+  const seen = new Set<string>();
+  return queries
+    .map(q => ({ ...q, text: clean(q.text) }))
+    .filter(q => {
+      if (q.text.length < 4) return false;
+      if (seen.has(q.text.toLowerCase())) return false;
+      seen.add(q.text.toLowerCase());
+      return true;
+    })
+    .sort((a, b) => b.priority - a.priority);
 }

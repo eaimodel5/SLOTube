@@ -4,8 +4,10 @@ import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { generateQueriesForGoal } from "./src/lib/discovery/queryGenerator";
-import { matchVideoToGoal } from "./src/lib/matching/localGoalMatcher";
+import { normalizeSloData } from "./src/lib/slo/normalizeSloGoals";
+import { runDiscoveryForGoal } from "./src/lib/discovery/discoveryService";
+import { runAiAssessment } from "./src/lib/matching/optionalAiMatcher";
+import { NormalizedSloGoal } from "./src/lib/slo/sloTypes";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,50 +37,14 @@ async function startServer() {
   app.use(express.json());
 
   // Load and parse SLO Goals in memory
-  let sloData: any = {};
-  let flattenedGoals: any[] = [];
+  let rawSloData: any = {};
+  let flattenedGoals: NormalizedSloGoal[] = [];
 
   try {
     const dataPath = path.join(process.cwd(), 'src', 'data', 'slo-goals.json');
     const rawData = await fs.readFile(dataPath, 'utf-8');
-    sloData = JSON.parse(rawData);
-    
-    // Flatten the complex nested structure for easier front-end consumption
-    if (sloData.subjects) {
-      sloData.subjects.forEach((subject: any) => {
-        if (subject.domains) {
-          subject.domains.forEach((domain: any) => {
-            if (domain.kerns) {
-              domain.kerns.forEach((kern: any) => {
-                if (kern.goals) {
-                  kern.goals.forEach((goal: any) => {
-                    flattenedGoals.push({
-                      id: goal.item_code,
-                      subject: subject.meta.subject,
-                      domain: domain.title,
-                      sentence: goal.sentence || goal.title || goal.item_code,
-                      description: goal.description,
-                      subjectCode: subject.meta.subject_code,
-                      actor: goal.actor,
-                      examples: [...(goal.base_illustraties || []), ...(goal.hvwo_illustraties || [])],
-                      elaborations: [...(goal.base_uitwerkingen || []), ...(goal.hvwo_uitwerkingen || [])]
-                    });
-                  });
-                }
-              });
-            }
-          });
-        }
-      });
-      
-      // Sorteer op doelnummer (item_code zoals '21-A' -> 21)
-      flattenedGoals.sort((a, b) => {
-        const numA = parseInt(a.id.split('-')[0]) || 0;
-        const numB = parseInt(b.id.split('-')[0]) || 0;
-        if (numA !== numB) return numA - numB;
-        return a.id.localeCompare(b.id); // '21-A' vs '21-B'
-      });
-    }
+    rawSloData = JSON.parse(rawData);
+    flattenedGoals = normalizeSloData(rawSloData);
   } catch (error) {
     console.error("Error loading SLO data:", error);
   }
@@ -96,7 +62,7 @@ async function startServer() {
   // Get raw SLO data for richer domain/subject hierarchy
   app.get("/api/slo-data", (req, res) => {
     // Only send essential parts to avoid payload bloat
-    const subjectsSummary = sloData.subjects?.map((s: any) => ({
+    const subjectsSummary = rawSloData.subjects?.map((s: any) => ({
       code: s.meta.subject_code,
       title: s.meta.subject,
       domains: s.domains?.map((d: any) => ({
@@ -356,36 +322,16 @@ async function startServer() {
         return res.status(500).json({ error: "GEMINI_API_KEY missing" });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const prompt = `Je bent een onderwijsexpert in Nederland. Beoordeel hoe goed deze YouTube-video aansluit bij het gespecificeerde SLO kerndoel.
+      const assessment = await runAiAssessment(video, goal);
+      if (!assessment) {
+        return res.status(500).json({ error: "De AI kon de video niet beoordelen." });
+      }
       
-      Video Titel: ${video.title}
-      Video Beschrijving: ${video.description || "Geen beschrijving."}
-      Kanaal: ${video.channelTitle}
-      
-      SLO Kerndoel:
-      Zin: ${goal.sentence}
-      Extra Omschrijving/Kader: ${goal.description}
-      Doelgroep/Actor (volgens SLO): ${goal.actor || 'leerling'}
-      
-      Beoordeel deze video en wees daarbij redelijk streng; voegt de video echt iets educatiefs toe aan dit doel, en is het geschikt voor de beoogde doelgroep (${goal.actor === 'school' ? 'docenten/school' : 'leerlingen'})?
-      Geef je beoordeling als een JSON object (en niets anders dan JSON) met EXACT deze structuur:
-      {
-        "score": (geheel getal tussen 0 en 100 representing match percentage),
-        "feedback": (een doeltreffende, professionele, didactische onderbouwing van max 3-4 zinnen)
-      }`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+      res.json({
+        score: assessment.score,
+        feedback: assessment.reason,
+        fullAssessment: assessment
       });
-
-      const aiText = response.text || "{}";
-      const result = JSON.parse(aiText);
-      res.json(result);
     } catch (error) {
       console.error("AI assessment failed:", error);
       res.status(500).json({ error: "De AI kon de video niet beoordelen." });
@@ -394,81 +340,14 @@ async function startServer() {
 
   // Discovery Endpoint
   app.post("/api/discovery/goal", async (req, res) => {
-    const { goal, limit = 12, useAi = false } = req.body;
+    const { goal, options = {} } = req.body;
     if (!goal || !goal.id) {
       return res.status(400).json({ error: "Geen kerndoel meegestuurd." });
     }
 
-    const queries = generateQueriesForGoal(goal);
-    const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({ error: "YouTube API Key ontbreekt in config." });
-    }
-
     try {
-      const allVideos = new Map();
-      // Only do top 3 queries to avoid rate limits on youtube search
-      const activeQueries = queries.slice(0, 3);
-
-      for (const query of activeQueries) {
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relevanceLanguage=nl&safeSearch=moderate&maxResults=5&q=${encodeURIComponent(query)}&key=${apiKey}`;
-        const searchResponse = await fetch(searchUrl);
-        
-        if (!searchResponse.ok) continue;
-        const searchData = await searchResponse.json();
-        if (!searchData.items || searchData.items.length === 0) continue;
-
-        const videoIds = searchData.items.map((item: any) => item.id.videoId).filter(Boolean).join(',');
-        if (!videoIds) continue;
-
-        const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${apiKey}`;
-        const detailsResponse = await fetch(detailsUrl);
-        if (!detailsResponse.ok) continue;
-        const detailsData = await detailsResponse.json();
-
-        if (detailsData.items) {
-          for (const item of detailsData.items) {
-            if (!allVideos.has(item.id)) {
-              let candidate = {
-                id: item.id,
-                videoId: item.id,
-                title: item.snippet.title,
-                url: `https://www.youtube.com/watch?v=${item.id}`,
-                channelTitle: item.snippet.channelTitle,
-                description: item.snippet.description,
-                durationSeconds: 0, // Would need ISO parser here, omitted for brevity
-                publishedAt: item.snippet.publishedAt,
-                thumbnailUrl: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
-                provider: "youtube" as "youtube",
-                sourceName: "YouTube",
-                origin: "discovery" as "discovery",
-                status: "pending" as "pending"
-              };
-
-              const matchResult = matchVideoToGoal(candidate, goal);
-              if (matchResult.score >= 35) { // Only keep candidates >= 35 score
-                candidate = {
-                  ...candidate,
-                  matchScore: matchResult.score,
-                  matchReason: matchResult.reason,
-                  matchEvidence: matchResult.evidence
-                } as any;
-                allVideos.set(item.id, candidate);
-              }
-            }
-          }
-        }
-      }
-
-      const candidates = Array.from(allVideos.values()).sort((a: any, b: any) => (b.matchScore || 0) - (a.matchScore || 0)).slice(0, Math.min(limit, 25));
-
-      res.json({
-        goalId: goal.id,
-        queries,
-        candidates
-      });
-
+      const result = await runDiscoveryForGoal(goal, options);
+      res.json(result);
     } catch (error) {
       console.error("Discovery error:", error);
       res.status(500).json({ error: "Fout tijdens zoeken naar nieuwe video's." });

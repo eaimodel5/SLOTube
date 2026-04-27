@@ -1,0 +1,20 @@
+export const SCORING_CONFIG = {
+  WEIGHTS: {
+    TITLE_SENTENCE: 40,
+    DESCRIPTION_SENTENCE: 20,
+    DOMAIN_MATCH: 15,
+    SUBJECT_MATCH: 10,
+    ELABORATION_MATCH: 20,
+    ILLUSTRATION_MATCH: 15,
+    ACTOR_MATCH: 10,
+    TRUSTED_SOURCE_BONUS: 10,
+  },
+  PENALTIES: {
+    NON_EDUCATIONAL: -25,
+    WRONG_AUDIENCE: -20,
+    MISSING_DESCRIPTION: -5,
+    NO_THUMBNAIL: -5,
+  },
+  MIN_DISCOVERY_SCORE: 45,
+  NEGATIVE_TERMS: ["trailer", "gameplay", "reaction", "muziek", "song", "lyrics", "vlog", "prank"]
+};

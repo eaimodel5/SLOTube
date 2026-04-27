@@ -3,6 +3,7 @@ import { ArrowLeft, BadgeInfo, ShieldCheck, Video as VideoIcon, Database, Loader
 import { db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import { FALLBACK_THUMBNAIL } from '../../lib/media/thumbnailResolver';
 
 interface VideoData {
   id: string;
@@ -16,6 +17,9 @@ interface VideoData {
   thumbnailUrl?: string;
   matchScore?: number;
   sourceType?: string;
+  provider?: string;
+  sourceUrl?: string;
+  sourceName?: string;
   assessedGoals?: {goalId: string, matchScore: number, aiFeedback?: string}[];
 }
 
@@ -64,18 +68,22 @@ export default function VideoDetail() {
     setIsProposing(true);
     try {
       await setDoc(doc(db, "videos", id), {
+        id: video.id || id,
         videoId: video.videoId || id,
         title: video.title,
-        channelTitle: video.channelTitle,
+        channelTitle: video.channelTitle || video.sourceName || "Onbekend",
         description: video.description || "",
         duration: video.duration || "",
         publishedAt: video.publishedAt || new Date().toISOString(),
         thumbnailUrl: video.thumbnailUrl || "",
         status: "pending",
+        origin: "manual",
         addedAt: serverTimestamp(),
         addedBy: "docent", 
         matchScore: video.matchScore || 0,
-        sourceType: video.sourceType || "youtube"
+        provider: video.provider || video.sourceType || "youtube",
+        sourceUrl: video.sourceUrl || `https://www.youtube.com/watch?v=${video.videoId || id}`,
+        sourceName: video.sourceName || video.channelTitle || ""
       }, { merge: true });
       setProposed(true);
     } catch (e) {
@@ -103,12 +111,17 @@ export default function VideoDetail() {
         <div className="lg:col-span-2 space-y-6">
           {/* Player/Preview */}
           <div className="aspect-video bg-zinc-900 rounded-xl flex items-center justify-center text-zinc-500 relative overflow-hidden">
-            {video?.sourceType === 'website' || video?.duration === 'Web/Bron' ? (
+            {video?.provider === 'web' || video?.sourceType === 'website' || video?.duration === 'Web/Bron' ? (
               <div className="absolute inset-0 bg-zinc-100 flex flex-col items-center justify-center p-8 text-center text-zinc-900">
-                <img src={video.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-20" />
+                <img 
+                  src={video.thumbnailUrl || FALLBACK_THUMBNAIL} 
+                  onError={(e) => { e.currentTarget.src = FALLBACK_THUMBNAIL; }}
+                  className="absolute inset-0 w-full h-full object-cover opacity-20" 
+                  alt=""
+                />
                 <h3 className="font-semibold text-lg z-10 mb-2">Dit is een externe webpagina</h3>
-                <p className="text-zinc-600 text-sm z-10 mb-6 max-w-sm">Klik op de onderstaande knop om direct naar het bijbehorende artikel of platform te gaan.</p>
-                <a href={video.videoId} target="_blank" rel="noopener noreferrer" className="z-10 px-6 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors shadow-sm">
+                <p className="text-zinc-600 text-sm z-10 mb-6 max-w-sm">Klik op de onderstaande knop om direct naar het bijbehorende artikel of platform ({video.sourceName}) te gaan.</p>
+                <a href={video.sourceUrl || video.videoId} target="_blank" rel="noopener noreferrer" className="z-10 px-6 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 transition-colors shadow-sm">
                   Open Lesmateriaal
                 </a>
               </div>
@@ -117,15 +130,15 @@ export default function VideoDetail() {
                 <iframe 
                   width="100%" 
                   height="100%" 
-                  src={`https://www.youtube.com/embed/${id?.includes('youtube.com') || id?.includes('youtu.be') ? (id.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || id) : id}?origin=${window.location.origin}`} 
+                  src={`https://www.youtube.com/embed/${id?.includes('youtube.com') || id?.includes('youtu.be') ? (id.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || id) : (video?.videoId || id)}?origin=${window.location.origin}`} 
                   title="YouTube video player" 
                   frameBorder="0" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen>
                 </iframe>
                 <div className="absolute bottom-4 right-4 z-10">
-                  <a href={`https://www.youtube.com/watch?v=${id?.includes('youtube.com') || id?.includes('youtu.be') ? (id.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i)?.[1] || id) : id}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-black/80 hover:bg-black text-white text-xs rounded shadow-lg backdrop-blur flex items-center gap-2">
-                    Open in YouTube
+                  <a href={video?.sourceUrl || `https://www.youtube.com/watch?v=${video?.videoId || id}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-black/80 hover:bg-black text-white text-xs rounded shadow-lg backdrop-blur flex items-center gap-2">
+                    Open Bron
                   </a>
                 </div>
               </>
@@ -142,7 +155,7 @@ export default function VideoDetail() {
               {video ? video.title : "Video laden..."}
             </h1>
             {video && (
-              <div className="mt-2 text-sm text-zinc-500 font-medium">Kanaal: {video.channelTitle}</div>
+              <div className="mt-2 text-sm text-zinc-500 font-medium">Kanaal / Bron: {video.channelTitle || video.sourceName}</div>
             )}
             
             <div className="mt-6">
@@ -183,14 +196,14 @@ export default function VideoDetail() {
                   
                   {proposed && (
                     <p className="text-xs text-emerald-600 font-medium text-center">
-                      Succes! De video staat in de wachtrij van de Databaas.
+                      Succes! De bron staat in de wachtrij van de Databaas.
                     </p>
                   )}
                 </div>
               ) : video?.status === 'pending' ? (
                 <div className="text-sm text-blue-600 bg-blue-50 border border-blue-100 p-4 rounded-lg">
                   <p className="font-semibold mb-1">In review</p>
-                  <p>Deze video is voorgesteld door een docent en wacht op goedkeuring door de Databaas.</p>
+                  <p>Deze bron is voorgesteld en wacht op goedkeuring door de Databaas.</p>
                 </div>
               ) : video?.assessedGoals && video.assessedGoals.length > 0 ? (
                 video.assessedGoals.map((assessment, i) => (
@@ -210,7 +223,7 @@ export default function VideoDetail() {
                 ))
               ) : (
                 <div className="text-sm text-zinc-500">
-                  <p>Er zijn nog geen SLO-kerndoelen gekoppeld of beoordeeld voor deze video.</p>
+                  <p>Er zijn nog geen SLO-kerndoelen gekoppeld of beoordeeld voor dit materiaal.</p>
                 </div>
               )}
             </div>

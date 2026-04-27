@@ -19,10 +19,10 @@ service cloud.firestore {
     function isAllowed() { return true; } 
     
     function isValidVideo(data) {
-        return data.keys().hasAll(['videoId', 'title', 'status'])
-            && data.videoId is string && data.videoId.size() <= 64
-            && data.title is string && data.title.size() <= 200
-            && data.status is string && data.status.matches('^(pending|approved|rejected)$');
+        return data.keys().hasAll(['id', 'title', 'status', 'origin'])
+            && data.id is string
+            && data.title is string
+            && data.status is string && data.status.matches('^(pending|approved|rejected|live_preview)$');
     }
 
     match /databaas_codes/{codeId} {
@@ -42,7 +42,14 @@ service cloud.firestore {
                     
       allow update: if isAllowed()
                     && isValidVideo(incoming())
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'assessedGoals', 'reviewedAt', 'reviewedBy', 'updatedAt', 'rejectReason', 'thumbnailUrl', 'duration', 'publishedAt']);
+                    && incoming().diff(existing()).affectedKeys().hasOnly([
+                      'status', 'goalSnapshot', 'matchScore', 'matchConfidence', 
+                      'matchReason', 'matchEvidence', 'matchPenalties', 'aiAssessment', 
+                      'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'rejectReason',
+                      'assessedGoals', 'addedAt', 'addedBy', 'sourceType', 'provider', 'videoId', 'title',
+                      'channelTitle', 'description', 'duration', 'publishedAt', 'thumbnailUrl',
+                      'sourceId', 'sourceName', 'sourceUrl', 'canonicalUrl', 'thumbnailStatus', 'goalId'
+                    ]);
                     
       allow delete: if isAllowed();
     }
