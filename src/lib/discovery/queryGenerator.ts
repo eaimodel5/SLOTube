@@ -82,6 +82,9 @@ export function generateQueriesForGoal(goal: NormalizedSloGoal): GeneratedQuery[
     queries.push({ text: `${goal.domain} schooltv`, group: "bronSpecifiek", priority: 60 });
     queries.push({ text: `${goal.domain} klokhuis`, group: "bronSpecifiek", priority: 60 });
     queries.push({ text: `${goal.domain} wikiwijs`, group: "bronSpecifiek", priority: 55 });
+    queries.push({ text: `${goal.domain} openleermateriaal`, group: "bronSpecifiek", priority: 55 });
+    queries.push({ text: `${goal.domain} impuls open leermateriaal`, group: "bronSpecifiek", priority: 50 });
+    queries.push({ text: `${goal.domain} npo`, group: "bronSpecifiek", priority: 50 });
   }
 
   // Filter out duplicates and ensure valid length

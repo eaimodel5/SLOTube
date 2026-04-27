@@ -281,7 +281,7 @@ export default function TeacherHome() {
             {dbVideoResults.map(vid => (
                <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group">
                   <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                    <img src={vid.thumbnailUrl} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
                       <PlayCircle className="w-12 h-12 text-white/90 drop-shadow-lg" />
                     </div>
@@ -331,7 +331,7 @@ export default function TeacherHome() {
               {liveResults.map(vid => (
                  <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group">
                     <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                      <img src={vid.thumbnailUrl} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
                         <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">
@@ -379,7 +379,7 @@ export default function TeacherHome() {
               {dbVideos.map(vid => (
                  <div key={vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.videoId}`)} className="cursor-pointer group">
                     <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                      <img src={vid.thumbnailUrl} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
                         <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">
                            <span className="bg-zinc-900 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">Externe bron</span>

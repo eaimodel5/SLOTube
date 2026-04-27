@@ -1,14 +1,14 @@
 import { DiscoveryProvider, ProviderSearchInput, RawCandidate } from "./providerInterface";
 import { webSearch } from "./webSearchHelper";
 
-export const wikiwijsProvider: DiscoveryProvider = {
-  sourceId: "wikiwijs",
+export const impulsProvider: DiscoveryProvider = {
+  sourceId: "impuls-open-leermateriaal",
   async search({ queries, maxResults }): Promise<RawCandidate[]> {
     const activeQueries = queries.slice(0, 3);
     const results: RawCandidate[] = [];
     for (const q of activeQueries) {
       if (!q?.text) continue;
-      const res = await webSearch(q.text, "wikiwijs", "Wikiwijs", "wikiwijs.nl");
+      const res = await webSearch(q.text, "impuls-open-leermateriaal", "Impuls Open Leermateriaal", "impulsopenleermateriaal.nl");
       results.push(...res);
     }
     return results;

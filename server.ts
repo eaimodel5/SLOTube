@@ -7,6 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 import { normalizeSloData } from "./src/lib/slo/normalizeSloGoals";
 import { runDiscoveryForGoal } from "./src/lib/discovery/discoveryService";
 import { runAiAssessment } from "./src/lib/matching/optionalAiMatcher";
+import { matchVideoToGoal } from "./src/lib/matching/localGoalMatcher";
 import { NormalizedSloGoal } from "./src/lib/slo/sloTypes";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -120,7 +121,7 @@ async function startServer() {
   });
 
   app.post("/api/youtube/search", async (req, res) => {
-    const { goalId, queries, maxResultsPerQuery = 5, sources = { youtube: true, wiki: true, npo: true, wikiwijs: true } } = req.body;
+    const { goalId, queries, maxResultsPerQuery = 5, sources = { youtube: true, wiki: true, npo: true, wikiwijs: true }, goal } = req.body;
     const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY;
 
     if (!queries || !Array.isArray(queries) || queries.length === 0) {
@@ -192,7 +193,7 @@ async function startServer() {
                           duration: "Web/Bron",
                           publishedAt: item.timestamp,
                           status: "pending",
-                          matchScore: Math.floor(Math.random() * (95 - 60 + 1) + 60),
+                          matchScore: 0,
                           thumbnailUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/512px-Wikipedia-logo-v2.svg.png",
                           viewCount: "-",
                           sourceType: "website"
@@ -241,7 +242,7 @@ async function startServer() {
                               videoId: url,
                               title: title,
                               description: snippet,
-                              matchScore: Math.floor(Math.random() * (95 - 60 + 1) + 60),
+                              matchScore: 0,
                               thumbnailUrl: `https://s0.wordpress.com/mshots/v1/${encodeURIComponent(url)}?w=512`,
                               channelTitle: `${origin} Bron`,
                               publishedAt: new Date().toISOString(),
@@ -292,7 +293,7 @@ async function startServer() {
                   duration: formatISO8601Duration(item.contentDetails.duration),
                   publishedAt: item.snippet.publishedAt,
                   status: "pending",
-                  matchScore: Math.floor(Math.random() * (95 - 40 + 1) + 40), // Baseline pre-calculation score
+                  matchScore: 0, // Will be overridden if goal is provided
                   thumbnailUrl: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
                   viewCount: item.statistics.viewCount
                });
@@ -301,7 +302,28 @@ async function startServer() {
         }
       }
 
-      res.json(Array.from(allVideos.values()));
+      let results = Array.from(allVideos.values());
+      
+      if (goal) {
+          results = results.map(video => {
+              const raw = {
+                  sourceId: video.sourceType === "website" ? "web" : "youtube",
+                  sourceName: video.channelTitle,
+                  sourceUrl: video.videoId.startsWith('http') ? video.videoId : `https://youtube.com/watch?v=${video.videoId}`,
+                  title: video.title,
+                  description: video.description || "",
+                  thumbnailUrl: video.thumbnailUrl,
+                  channelTitle: video.channelTitle,
+                  duration: video.duration,
+                  publishedAt: video.publishedAt
+              };
+              const match = matchVideoToGoal(raw, goal);
+              return { ...video, matchScore: match.score, matchReason: match.reason, matchEvidence: match.evidence };
+          });
+      }
+      
+      results.sort((a, b) => b.matchScore - a.matchScore);
+      res.json(results);
 
     } catch (error) {
       console.error("Error executing YouTube search:", error);

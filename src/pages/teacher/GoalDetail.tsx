@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Globe } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { createPendingVideo } from '../../lib/firebase/videoRepository';
 import { PasswordModal } from '../../components/PasswordModal';
 import { isTextSimilar } from '../../lib/textUtils';
 
@@ -113,8 +114,8 @@ export default function GoalDetail() {
       }
 
       const bodyData = isGenericUrl 
-        ? { url: searchQuery }
-        : { queries: effectiveQueries, maxResultsPerQuery: 5 };
+        ? { url: searchQuery, goal: goal }
+        : { queries: effectiveQueries, maxResultsPerQuery: 5, goal: goal };
 
       const resp = await fetch(endpoint, {
         method: 'POST',
@@ -175,33 +176,15 @@ export default function GoalDetail() {
 
   const handleSendToReview = async (candidate: any) => {
     try {
-      // Check if it already exists in database using canonicalUrl
-      const q = query(collection(db, "videos"), where("canonicalUrl", "==", candidate.canonicalUrl), where("goalId", "==", id));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        alert("Deze video staat al in de database voor dit kerndoel.");
-        return;
-      }
-
-      await import('firebase/firestore').then(({ setDoc, doc, serverTimestamp }) => {
-        return setDoc(doc(db, "videos", candidate.id), {
-          ...candidate,
-          goalId: id,
-          status: "pending",
-          origin: "discovery",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      });
-
+      await createPendingVideo(candidate, id || '');
       alert("Video is succesvol naar de review gestuurd!");
       
       // Remove from list
       setDiscoveryCandidates(prev => prev ? prev.filter(c => c.id !== candidate.id) : null);
       
-    } catch(e) {
+    } catch(e: any) {
       console.error(e);
-      alert("Kon de video niet toevoegen aan review.");
+      alert(e.message || "Kon de video niet toevoegen aan review.");
     }
   };
 
@@ -300,7 +283,7 @@ export default function GoalDetail() {
               <div key={idx} className="flex flex-col md:flex-row gap-6 p-4 bg-white border border-emerald-100 rounded-xl shadow-sm relative overflow-hidden">
                 {/* Thumbnail */}
                 <div className="relative w-full md:w-64 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-emerald-50">
-                  <img src={candidate.thumbnailUrl} alt={candidate.title} className="w-full h-full object-cover" />
+                  <img src={candidate.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={candidate.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                     <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-lg" />
                   </div>
@@ -387,7 +370,7 @@ export default function GoalDetail() {
                    </div>
                     {/* Thumbnail */}
                     <div className="relative w-32 sm:w-48 md:w-64 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                      <img src={vid.thumbnailUrl} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
                         <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">
@@ -439,7 +422,7 @@ export default function GoalDetail() {
             >
               {/* Thumbnail */}
               <div className="relative w-32 sm:w-48 md:w-64 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                 
                 {video.sourceType === 'website' || video.duration === 'Web/Bron' ? (
                   <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">

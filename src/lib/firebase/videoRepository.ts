@@ -1,6 +1,6 @@
 import { 
   collection, 
-  addDoc, 
+  setDoc, 
   updateDoc, 
   doc, 
   serverTimestamp, 
@@ -17,19 +17,26 @@ import { StoredVideo, VideoCandidate } from "../../types";
 const COLLECTION_NAME = "videos";
 
 export async function createPendingVideo(candidate: VideoCandidate, goalId: string): Promise<string> {
-  // Check if it already exists for this goal
+  // Check if it already exists for this goal using stable ID
+  const docRef = doc(db, COLLECTION_NAME, candidate.id);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    throw new Error("Deze bron is al toegevoegd en bekend in het systeem.");
+  }
+
+  // Double check by canonicalUrl in case ID algo changed
   const q = query(
     collection(db, COLLECTION_NAME), 
     where("goalId", "==", goalId), 
     where("canonicalUrl", "==", candidate.canonicalUrl)
   );
   
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    throw new Error("Deze bron is al toegevoegd voor dit kerndoel.");
+  const snapQuery = await getDocs(q);
+  if (!snapQuery.empty) {
+    throw new Error("Deze bron is al toegevoegd voor dit kerndoel (url duplicatie).");
   }
 
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+  await setDoc(docRef, {
     ...candidate,
     goalId,
     status: "pending",
@@ -37,7 +44,22 @@ export async function createPendingVideo(candidate: VideoCandidate, goalId: stri
     updatedAt: serverTimestamp()
   });
 
-  return docRef.id;
+  return candidate.id;
+}
+
+export async function proposeVideo(video: Partial<VideoCandidate>): Promise<void> {
+  const finalId = video.id || video.videoId;
+  if (!finalId) throw new Error("Missing ID");
+  
+  const ref = doc(db, COLLECTION_NAME, finalId);
+  await setDoc(ref, {
+    ...video,
+    status: "pending",
+    origin: "manual",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    addedBy: "docent"
+  }, { merge: true });
 }
 
 export async function approveVideo(id: string, reviewer: string): Promise<void> {

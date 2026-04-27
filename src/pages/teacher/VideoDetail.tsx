@@ -67,24 +67,23 @@ export default function VideoDetail() {
     if (!video || !id) return;
     setIsProposing(true);
     try {
-      await setDoc(doc(db, "videos", id), {
-        id: video.id || id,
-        videoId: video.videoId || id,
-        title: video.title,
-        channelTitle: video.channelTitle || video.sourceName || "Onbekend",
-        description: video.description || "",
-        duration: video.duration || "",
-        publishedAt: video.publishedAt || new Date().toISOString(),
-        thumbnailUrl: video.thumbnailUrl || "",
-        status: "pending",
-        origin: "manual",
-        addedAt: serverTimestamp(),
-        addedBy: "docent", 
-        matchScore: video.matchScore || 0,
-        provider: video.provider || video.sourceType || "youtube",
-        sourceUrl: video.sourceUrl || `https://www.youtube.com/watch?v=${video.videoId || id}`,
-        sourceName: video.sourceName || video.channelTitle || ""
-      }, { merge: true });
+      await import('../../lib/firebase/videoRepository').then(({ proposeVideo }) => {
+        return proposeVideo({
+          id: video.id || id,
+          videoId: video.videoId || id,
+          title: video.title,
+          channelTitle: video.channelTitle || video.sourceName || "Onbekend",
+          description: video.description || "",
+          duration: video.duration || "",
+          publishedAt: video.publishedAt || new Date().toISOString(),
+          thumbnailUrl: video.thumbnailUrl || "",
+          matchScore: video.matchScore || 0,
+          provider: video.provider || video.sourceType || "youtube",
+          sourceUrl: video.sourceUrl || `https://www.youtube.com/watch?v=${video.videoId || id}`,
+          sourceName: video.sourceName || video.channelTitle || ""
+        } as any);
+      });
+      
       setProposed(true);
     } catch (e) {
       console.error(e);

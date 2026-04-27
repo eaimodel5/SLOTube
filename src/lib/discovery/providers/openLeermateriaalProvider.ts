@@ -4,8 +4,13 @@ import { webSearch } from "./webSearchHelper";
 export const openLeermateriaalProvider: DiscoveryProvider = {
   sourceId: "openleermateriaal",
   async search({ queries, maxResults }): Promise<RawCandidate[]> {
-    const query = queries[0]?.text || "";
-    if (!query) return [];
-    return webSearch(query, "openleermateriaal", "Openleermateriaal", "openleermateriaal.nl");
+    const activeQueries = queries.slice(0, 3);
+    const results: RawCandidate[] = [];
+    for (const q of activeQueries) {
+      if (!q?.text) continue;
+      const res = await webSearch(q.text, "openleermateriaal", "Openleermateriaal", "openleermateriaal.nl");
+      results.push(...res);
+    }
+    return results;
   }
 };

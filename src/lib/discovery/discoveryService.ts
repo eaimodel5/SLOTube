@@ -5,19 +5,25 @@ import { schooltvProvider } from "./providers/schooltvProvider";
 import { klokhuisProvider } from "./providers/klokhuisProvider";
 import { wikiwijsProvider } from "./providers/wikiwijsProvider";
 import { openLeermateriaalProvider } from "./providers/openLeermateriaalProvider";
+import { impulsProvider } from "./providers/impulsProvider";
+import { npoProvider } from "./providers/npoProvider";
 import { wikipediaProvider } from "./providers/wikipediaProvider";
 import { DiscoveryProvider, RawCandidate } from "./providers/providerInterface";
 import { matchVideoToGoal } from "../matching/localGoalMatcher";
+import { runAiAssessment } from "../matching/optionalAiMatcher";
 import { resolveThumbnail } from "../media/thumbnailResolver";
 import { generateStableId, canonicalizeUrl } from "../media/urlUtils";
 import { VideoCandidate } from "../../types";
+import { getEnabledSources } from "../../data/videoSources";
 
-const PROVIDERS: DiscoveryProvider[] = [
+const ALL_PROVIDERS: DiscoveryProvider[] = [
   youtubeProvider,
   schooltvProvider,
   klokhuisProvider,
   wikiwijsProvider,
   openLeermateriaalProvider,
+  impulsProvider,
+  npoProvider,
   wikipediaProvider
 ];
 
@@ -33,9 +39,10 @@ export async function runDiscoveryForGoal(
 ): Promise<{ goalId: string; results: VideoCandidate[]; diagnostics: any }> {
   const maxResults = options.maxResults || 12;
   const queries = generateQueriesForGoal(goal);
-  const enabledProviders = PROVIDERS.filter(p => 
-    !options.enabledSourceIds || options.enabledSourceIds.includes(p.sourceId)
-  );
+  
+  // Use DB enabled sources if not provided
+  const enabledIds = options.enabledSourceIds || getEnabledSources().map(s => s.id);
+  const enabledProviders = ALL_PROVIDERS.filter(p => enabledIds.includes(p.sourceId));
 
   const rawCandidates: RawCandidate[] = [];
   const diagnostics = {
@@ -100,6 +107,13 @@ export async function runDiscoveryForGoal(
       
       goalSnapshot: goal // Plan says to store snapshot
     };
+    
+    if (options.useAi) {
+        const assessment = await runAiAssessment(candidate, goal);
+        if (assessment) {
+            candidate.aiAssessment = assessment;
+        }
+    }
 
     uniqueCandidates.set(id, candidate);
   }

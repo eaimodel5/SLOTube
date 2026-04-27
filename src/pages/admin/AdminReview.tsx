@@ -203,7 +203,7 @@ export default function AdminReview() {
                   }}
                 >
                   <div className="w-20 h-14 bg-zinc-100 rounded-lg overflow-hidden relative shrink-0 border border-zinc-200 shadow-sm">
-                    <img src={video.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover" alt="" />
+                    <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="absolute inset-0 w-full h-full object-cover" alt="" />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent h-6" />
                     {video.sourceType === 'website' && (
                       <Database className="w-4 h-4 text-white absolute bottom-1 right-1" />
@@ -266,7 +266,7 @@ export default function AdminReview() {
                 {/* Player/Preview */}
                 {selectedVideo.provider === 'web' || selectedVideo.sourceType === 'website' || selectedVideo.duration === 'Web/Bron' ? (
                   <div className="aspect-video bg-zinc-50 flex flex-col items-center justify-center relative p-8 text-center border-b border-zinc-200">
-                     <img src={selectedVideo.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
+                     <img src={selectedVideo.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
                      <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4 z-10 border border-zinc-200">
                        <Database className="w-8 h-8 text-zinc-400" />
                      </div>

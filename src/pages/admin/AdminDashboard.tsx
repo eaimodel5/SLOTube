@@ -306,7 +306,7 @@ export default function AdminDashboard() {
                       <div className="w-full sm:w-48 aspect-video rounded-xl overflow-hidden bg-zinc-100 relative shrink-0 border border-zinc-100">
                         {video.sourceType === 'website' || video.duration === 'Web/Bron' ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50 group-hover:bg-zinc-100 transition-colors">
-                             <img src={video.thumbnailUrl} className="absolute inset-0 w-full h-full object-cover opacity-10" alt="" />
+                             <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="absolute inset-0 w-full h-full object-cover opacity-10" alt="" />
                              <Database className="w-8 h-8 text-zinc-300 mb-2 z-10" />
                              <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500 z-10 text-center px-2">Web / Artikel</span>
                           </div>
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
                             className="absolute inset-0 cursor-pointer group-hover:scale-105 transition-transform duration-500"
                             onClick={() => setPlayingVideoId(video.videoId)}
                           >
-                            <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                            <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={video.title} className="w-full h-full object-cover" />
                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 flex items-center justify-center transition-colors">
                               <div className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Video className="w-5 h-5 text-zinc-900" />
@@ -384,7 +384,7 @@ export default function AdminDashboard() {
                   recentPending.map(item => (
                     <div key={item.id} className="bg-white border border-zinc-200 rounded-xl p-3 flex gap-3 shadow-sm items-center">
                       <div className="w-12 h-12 rounded bg-zinc-100 shrink-0 overflow-hidden relative">
-                         <img src={item.thumbnailUrl} className="w-full h-full object-cover opacity-80" alt="" />
+                         <img src={item.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="w-full h-full object-cover opacity-80" alt="" />
                       </div>
                       <div className="flex-1 min-w-0">
                          <h4 className="text-xs font-semibold text-zinc-900 line-clamp-1">{item.title}</h4>

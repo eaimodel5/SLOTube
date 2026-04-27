@@ -4,8 +4,13 @@ import { webSearch } from "./webSearchHelper";
 export const schooltvProvider: DiscoveryProvider = {
   sourceId: "schooltv",
   async search({ queries, maxResults }): Promise<RawCandidate[]> {
-    const query = queries[0]?.text || "";
-    if (!query) return [];
-    return webSearch(query, "schooltv", "Schooltv", "schooltv.nl");
+    const activeQueries = queries.slice(0, 3);
+    const results: RawCandidate[] = [];
+    for (const q of activeQueries) {
+      if (!q?.text) continue;
+      const res = await webSearch(q.text, "schooltv", "Schooltv", "schooltv.nl");
+      results.push(...res);
+    }
+    return results;
   }
 };

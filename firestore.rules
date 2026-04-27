@@ -22,7 +22,7 @@ service cloud.firestore {
         return data.keys().hasAll(['id', 'title', 'status', 'origin'])
             && data.id is string
             && data.title is string
-            && data.status is string && data.status.matches('^(pending|approved|rejected|live_preview)$');
+            && data.status is string && data.status.matches('^(pending|approved|rejected)$');
     }
 
     match /databaas_codes/{codeId} {
