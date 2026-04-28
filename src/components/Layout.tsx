@@ -7,16 +7,16 @@ export default function Layout() {
 
   const teacherNav = [
     { to: "/teacher", icon: BookOpen, label: "Ontdek & zoek" },
-    { to: "/tutorial", icon: HelpCircle, label: "Hoe werkt SLOtube" },
+    { to: "/tutorial", icon: HelpCircle, label: "Hoe werkt SLOTube" },
   ];
 
   const adminNav = [
-    { to: "/admin", icon: LayoutDashboard, label: "Admin beheer" },
-    { to: "/admin/review", icon: ShieldCheck, label: "AI keurmeester" },
+    { to: "/admin", icon: LayoutDashboard, label: "Beheer" },
+    { to: "/admin/review", icon: ShieldCheck, label: "Reviewomgeving" },
   ];
 
   const databaasNav = [
-    { to: "/admin/review", icon: ShieldCheck, label: "Databaas review" },
+    { to: "/admin/review", icon: ShieldCheck, label: "Reviewomgeving" },
   ];
 
   const navItems = role === 'admin' ? adminNav : role === 'databaas' ? databaasNav : teacherNav;

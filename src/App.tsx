@@ -180,7 +180,11 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route element={<Layout />}>
             {/* General */}
-            <Route path="/tutorial" element={<Tutorial />} />
+            <Route path="/tutorial" element={
+              <RoleGuard requiredRoles={['docent', 'admin', 'databaas']}>
+                <Tutorial />
+              </RoleGuard>
+            } />
 
             {/* Teacher Routes */}
             <Route path="/teacher" element={
