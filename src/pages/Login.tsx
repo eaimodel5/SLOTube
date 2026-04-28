@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PlayCircle, ShieldCheck, GraduationCap, Briefcase } from 'lucide-react';
+import { PlayCircle, ChevronRight } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -10,18 +10,11 @@ function FakeHackOverlay({ onComplete }: { onComplete: () => void }) {
   
   useEffect(() => {
     const lines = [
-      "SLOTube OS v2.4 booting...",
-      "Checking memory... OK",
-      "Mounting file systems... OK",
-      "Initializing network interfaces... eth0: UP",
-      "Connecting to Firebase backend...",
-      "[WARNING] Developer override credentials active: admin / SLOTube",
-      "> EXECUTING PAYLOAD: DUMP_ALL_RECORDS",
-      "Downloading firestore/users... 14,204 records dumped.",
-      "Downloading firestore/system_auth... 1 record dumped.",
-      "[!] KERNEL PANIC: Unauthorized datastream detected",
-      "Wiping tracks...",
-      "Rebooting system to restore safe state..."
+      "SLOTube easter egg gestart...",
+      "Nepterminal laden... OK",
+      "Geen echte data geopend",
+      "Beveiligde grapmodus actief",
+      "Terug naar veilige inlog..."
     ];
 
     let current = 0;
@@ -166,8 +159,7 @@ export default function Login() {
   if (showFakeHack) {
     return <FakeHackOverlay onComplete={() => {
       setShowFakeHack(false);
-      login('admin');
-      navigate('/admin');
+      // Removed the admin login and navigation for the easter egg!
     }} />;
   }
 
@@ -176,90 +168,82 @@ export default function Login() {
       
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
         <div className="flex justify-center mb-6">
-           <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-zinc-200 flex items-center justify-center">
-             <PlayCircle className="w-8 h-8 text-blue-600" />
+           <div className="w-14 h-14 bg-black rounded-xl shadow-[0_0_15px_rgba(0,255,0,0.2)] border border-[#0f0]/50 flex items-center justify-center">
+             <PlayCircle className="w-7 h-7 text-[#0f0] animate-pulse" />
            </div>
         </div>
-        <h2 className="text-center text-3xl font-bold tracking-tight text-zinc-900">
-          SLOTube <span className="font-light text-blue-600">Platform</span>
+        <h2 className="text-center text-3xl tracking-tight text-zinc-900 flex justify-center items-center gap-1.5 font-sans">
+          <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-2 py-0.5 rounded-lg border border-[#0f0]/30 shadow-[0_0_10px_rgba(0,255,0,0.1)] tracking-widest text-lg">TUBE</span>
         </h2>
-        <p className="mt-4 text-center text-sm text-zinc-600 leading-relaxed font-medium">
-          Welkom! Dit platform koppelt educatieve video's automatisch aan de officiële Nederlandse SLO-kerndoelen.
+        <p className="mt-4 text-center text-sm text-zinc-600 leading-relaxed max-w-xs mx-auto">
+          <span className="font-semibold block mb-1 text-zinc-800">Lesmateriaal bij SLO-kerndoelen</span>
+          Zoek, beoordeel en deel video’s en open leermateriaal per kerndoel.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-white py-8 px-4 shadow-sm border border-zinc-200 sm:rounded-2xl sm:px-10">
-          <div className="space-y-4">
+        <div className="bg-white py-8 px-4 border border-zinc-200 sm:rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] sm:px-10">
+          <div className="space-y-3">
             
             <button
               onClick={() => handleLogin('docent')}
               disabled={loadingRole !== null}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
                 loadingRole === 'docent' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-zinc-200 hover:border-blue-200 hover:bg-blue-50/50 bg-white'
+                  ? 'border-zinc-500 bg-zinc-50' 
+                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
               }`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${loadingRole === 'docent' ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-medium text-zinc-900">Docent omgeving</h3>
-                  <p className="text-xs text-zinc-500">Bekijk en importeer lesmateriaal</p>
-                </div>
+              <div className="text-left flex-1 min-w-0 pr-4">
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Docentenomgeving</h3>
+                <p className="text-sm text-zinc-500 mt-1 truncate">Zoek en gebruik goedgekeurd lesmateriaal</p>
               </div>
-              {loadingRole === 'docent' && (
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              {loadingRole === 'docent' ? (
+                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
+              ) : (
+                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
               )}
             </button>
 
             <button
               onClick={() => handleLogin('databaas')}
               disabled={loadingRole !== null}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
                 loadingRole === 'databaas' 
-                  ? 'border-purple-500 bg-purple-50' 
-                  : 'border-zinc-200 hover:border-purple-200 hover:bg-purple-50/50 bg-white'
+                  ? 'border-zinc-500 bg-zinc-50' 
+                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
               }`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${loadingRole === 'databaas' ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-600'}`}>
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-medium text-zinc-900">Databaas inlog</h3>
-                  <p className="text-xs text-zinc-500">Beoordeel en keur video's goed</p>
-                </div>
+              <div className="text-left flex-1 min-w-0 pr-4">
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Beoordelingsomgeving</h3>
+                <p className="text-sm text-zinc-500 mt-1 truncate">Beoordeel en valideer nieuw materiaal</p>
               </div>
-              {loadingRole === 'databaas' && !showCodeModal && (
-                <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              {loadingRole === 'databaas' && !showCodeModal ? (
+                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
+              ) : (
+                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
               )}
             </button>
 
             <button
               onClick={() => handleLogin('admin')}
               disabled={loadingRole !== null}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
                 loadingRole === 'admin' 
-                  ? 'border-emerald-500 bg-emerald-50' 
+                  ? 'border-zinc-500 bg-zinc-50' 
                   : buttonDisabledFake
-                  ? 'border-zinc-200 bg-zinc-50 opacity-50 cursor-pointer pointer-events-auto'
-                  : 'border-zinc-200 hover:border-emerald-200 hover:bg-emerald-50/50 bg-white'
+                  ? 'border-zinc-200 bg-zinc-50 opacity-40 cursor-pointer pointer-events-auto'
+                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
               }`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${loadingRole === 'admin' ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-600'}`}>
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-medium text-zinc-900">Systeem beheerder</h3>
-                  <p className="text-xs text-zinc-500">Volledig overzicht en beheer</p>
-                </div>
+              <div className="text-left flex-1 min-w-0 pr-4">
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Beheerdersomgeving</h3>
+                <p className="text-sm text-zinc-500 mt-1 truncate">Systeeminstellingen en toegangsbeheer</p>
               </div>
-              {loadingRole === 'admin' && (
-                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+              {loadingRole === 'admin' ? (
+                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
+              ) : (
+                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
               )}
             </button>
 
@@ -283,7 +267,7 @@ export default function Login() {
               value={databaasCode}
               onChange={e => setDatabaasCode(e.target.value)}
               placeholder="Bijv. Henk-code-001"
-              className="w-full px-4 py-2 border border-zinc-300 rounded-lg mb-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="w-full px-4 py-2 border border-zinc-300 rounded-lg mb-2 focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none"
               autoFocus
             />
             {codeError && <p className="text-xs text-red-500 mb-4">{codeError}</p>}
@@ -297,7 +281,7 @@ export default function Login() {
               <button 
                 onClick={handleDatabaasLogin}
                 disabled={loadingRole === 'databaas' || !databaasCode}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center gap-2"
               >
                 {loadingRole === 'databaas' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
                 Inloggen
@@ -318,7 +302,7 @@ export default function Login() {
                 value={adminEmail}
                 onChange={e => setAdminEmail(e.target.value)}
                 placeholder="Inlognaam of e-mail"
-                className="w-full px-4 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none"
                 autoFocus
               />
               <input 
@@ -326,7 +310,7 @@ export default function Login() {
                 value={adminPassword}
                 onChange={e => setAdminPassword(e.target.value)}
                 placeholder="Wachtwoord"
-                className="w-full px-4 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none"
               />
             </div>
             {adminError && <p className="text-xs text-red-500 mb-4 mt-2">{adminError}</p>}
@@ -340,7 +324,7 @@ export default function Login() {
               <button 
                 onClick={handleAdminAuth}
                 disabled={loadingRole === 'admin' || !adminEmail || !adminPassword}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center gap-2"
               >
                 {loadingRole === 'admin' ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : null}
                 Inloggen

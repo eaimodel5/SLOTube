@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Video, ShieldCheck, Search, Database, Loader2, Save, ChevronRight, Wand2, Link as LinkIcon, Plus, UserPlus, Key } from 'lucide-react';
+import { Video, ShieldCheck, Search, Database, Loader2, Save, ChevronRight, Wand2, Link as LinkIcon, Plus, UserPlus, Key, PlayCircle, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
-import { collection, doc, setDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { PasswordModal } from '../../components/PasswordModal';
 
 export default function AdminDashboard() {
@@ -15,11 +15,36 @@ export default function AdminDashboard() {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const [dbStats, setDbStats] = useState({ total: 0, pending: 0, approved: 0 });
   const [recentPending, setRecentPending] = useState<any[]>([]);
+  const [recentApproved, setRecentApproved] = useState<any[]>([]);
 
   const [databaasCodes, setDatabaasCodes] = useState<any[]>([]);
   const [newCodeName, setNewCodeName] = useState('');
   const [newCodeValue, setNewCodeValue] = useState('');
   const [isAddingCode, setIsAddingCode] = useState(false);
+
+  const renderThumbnail = (item: any) => {
+    const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
+    const thumbUrl = item.thumbnailUrl || item.thumbnail;
+    const hasThumb = thumbUrl && thumbUrl.length > 5;
+    
+    return (
+      <div className="relative w-full h-full bg-zinc-100 flex items-center justify-center">
+        {hasThumb ? (
+           <img 
+             src={thumbUrl} 
+             onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} 
+             alt={item.title} 
+             className="w-full h-full object-cover opacity-80" 
+           />
+        ) : (
+           <div className="flex flex-col items-center justify-center text-zinc-400">
+             {isWeb ? <FileText className="w-8 h-8 mb-2 opacity-50" /> : <PlayCircle className="w-8 h-8 mb-2 opacity-50" />}
+             <span className="text-[10px] font-medium uppercase tracking-widest">{isWeb ? 'Website' : 'Video'}</span>
+           </div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -28,6 +53,7 @@ export default function AdminDashboard() {
         let pending = 0;
         let approved = 0;
         const pendingDocs: any[] = [];
+        const approvedDocs: any[] = [];
         
         snap.forEach(d => {
           const data = d.data();
@@ -35,7 +61,10 @@ export default function AdminDashboard() {
             pending++;
             pendingDocs.push({ id: d.id, ...data });
           }
-          if (data.status === 'approved') approved++;
+          if (data.status === 'approved') {
+            approved++;
+            approvedDocs.push({ id: d.id, ...data });
+          }
         });
         
         // Sort pending by newest added first, then take top 3
@@ -44,9 +73,17 @@ export default function AdminDashboard() {
           const d2 = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
           return d2 - d1;
         });
+
+        // Top 5 approved
+        approvedDocs.sort((a, b) => {
+          const d1 = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
+          const d2 = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+          return d2 - d1;
+        });
         
         setDbStats({ total: snap.size, pending, approved });
         setRecentPending(pendingDocs.slice(0, 3));
+        setRecentApproved(approvedDocs.slice(0, 5));
       } catch (e) {
         console.error(e);
       }
@@ -95,6 +132,18 @@ export default function AdminDashboard() {
     { label: 'Goedgekeurd', value: dbStats.approved, icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
     { label: 'Wachtlijst Review', value: dbStats.pending, icon: Loader2, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
   ];
+
+  const handleDeleteApproved = async (id: string, e: any) => {
+    e.stopPropagation();
+    if (!window.confirm('Weet u zeker dat u dit goedgekeurde materiaal wilt verwijderen?')) return;
+    try {
+      await deleteDoc(doc(db, 'videos', id));
+      setRecentApproved(prev => prev.filter(v => v.id !== id));
+      setDbStats(s => ({ ...s, approved: s.approved - 1, total: s.total - 1 }));
+    } catch(err) {
+      alert('Delete failed');
+    }
+  };
 
   const handleCrawl = async () => {
     if (!crawlQuery) return;
@@ -306,9 +355,11 @@ export default function AdminDashboard() {
                       <div className="w-full sm:w-48 aspect-video rounded-xl overflow-hidden bg-zinc-100 relative shrink-0 border border-zinc-100">
                         {video.sourceType === 'website' || video.duration === 'Web/Bron' ? (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-50 group-hover:bg-zinc-100 transition-colors">
-                             <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="absolute inset-0 w-full h-full object-cover opacity-10" alt="" />
-                             <Database className="w-8 h-8 text-zinc-300 mb-2 z-10" />
-                             <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-500 z-10 text-center px-2">Web / Artikel</span>
+                             {renderThumbnail(video)}
+                             <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-white/50 backdrop-blur-[2px]">
+                               <Database className="w-8 h-8 text-zinc-600 mb-2" />
+                               <span className="text-[10px] uppercase tracking-wider font-bold text-zinc-600 text-center px-2">Web / Artikel</span>
+                             </div>
                           </div>
                         ) : playingVideoId === video.videoId ? (
                           <iframe 
@@ -324,7 +375,7 @@ export default function AdminDashboard() {
                             className="absolute inset-0 cursor-pointer group-hover:scale-105 transition-transform duration-500"
                             onClick={() => setPlayingVideoId(video.videoId)}
                           >
-                            <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={video.title} className="w-full h-full object-cover" />
+                            {renderThumbnail(video)}
                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 flex items-center justify-center transition-colors">
                               <div className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Video className="w-5 h-5 text-zinc-900" />
@@ -362,6 +413,44 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
+              {/* Approved Videos Overview */}
+              <div className="border-t border-zinc-100 bg-zinc-50/30 mt-6">
+                <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100 bg-white">
+                  <h3 className="font-semibold text-zinc-900">Gevonden en geaccepteerde bronnen beheren</h3>
+                  <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md border border-emerald-100">{dbStats.approved} Actief</span>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                  {recentApproved.length === 0 ? (
+                    <div className="text-center py-8">
+                       <p className="text-sm text-zinc-500">Nog geen goedgekeurde bronnen in de database.</p>
+                    </div>
+                  ) : (
+                    recentApproved.map(item => (
+                      <div key={item.id} onClick={() => navigate(`/teacher/videos/${item.id}`)} className="bg-white border border-zinc-200 rounded-xl p-3 flex gap-4 shadow-sm items-center cursor-pointer hover:border-zinc-300 transition-colors">
+                        <div className="w-16 h-16 rounded bg-zinc-100 shrink-0 overflow-hidden relative">
+                           {renderThumbnail({ ...item, title: item.title, thumbnailUrl: item.thumbnailUrl })}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <h4 className="text-sm font-semibold text-zinc-900 line-clamp-1">{item.title}</h4>
+                           <p className="text-xs text-zinc-500 mt-1 truncate">{item.channelTitle} • {item.sourceType === 'website' || item.duration === 'Web/Bron' ? 'Website' : 'Video'}</p>
+                        </div>
+                        <button 
+                          onClick={(e) => handleDeleteApproved(item.id, e)}
+                          className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-100"
+                        >
+                          Verwijder
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  {dbStats.approved > 5 && (
+                    <div className="text-center pt-2">
+                       <p className="text-xs text-zinc-500">Log in op de Docentenomgeving om alle {dbStats.approved} bronnen te doorzoeken.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -384,7 +473,7 @@ export default function AdminDashboard() {
                   recentPending.map(item => (
                     <div key={item.id} className="bg-white border border-zinc-200 rounded-xl p-3 flex gap-3 shadow-sm items-center">
                       <div className="w-12 h-12 rounded bg-zinc-100 shrink-0 overflow-hidden relative">
-                         <img src={item.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} className="w-full h-full object-cover opacity-80" alt="" />
+                         {renderThumbnail({ ...item, title: item.title, thumbnailUrl: item.thumbnailUrl })}
                       </div>
                       <div className="flex-1 min-w-0">
                          <h4 className="text-xs font-semibold text-zinc-900 line-clamp-1">{item.title}</h4>

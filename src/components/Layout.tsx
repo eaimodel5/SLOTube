@@ -1,12 +1,13 @@
 import { useAuth } from '../context/AuthContext';
 import { NavLink, Outlet } from 'react-router-dom';
-import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut } from 'lucide-react';
+import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut, HelpCircle } from 'lucide-react';
 
 export default function Layout() {
   const { role, logout } = useAuth();
 
   const teacherNav = [
     { to: "/teacher", icon: BookOpen, label: "Ontdek & zoek" },
+    { to: "/tutorial", icon: HelpCircle, label: "Hoe werkt SLOtube" },
   ];
 
   const adminNav = [
@@ -25,10 +26,10 @@ export default function Layout() {
       {/* Sidebar - Desktop */}
       <aside className="w-64 bg-white border-r border-[#e5e5e5] hidden md:flex flex-col">
         <div className="p-6 border-b border-[#e5e5e5]">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
-            SLO<span className="text-zinc-400">Tube</span>
-          </h1>
-          <p className="text-[11px] font-mono tracking-widest uppercase text-zinc-500 mt-1">
+          <div className="flex items-center gap-1.5 mb-1 text-2xl tracking-tight text-zinc-900 font-sans">
+            <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-1.5 py-0.5 rounded border border-[#0f0]/30 shadow-[0_0_8px_rgba(0,255,0,0.1)] tracking-widest text-sm">TUBE</span>
+          </div>
+          <p className="text-[11px] font-mono tracking-widest uppercase text-zinc-500">
             Educatieve hub
           </p>
         </div>
@@ -80,9 +81,9 @@ export default function Layout() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-[#e5e5e5] p-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
-            SLO<span className="text-zinc-400">Tube</span>
-          </h1>
+          <div className="flex items-center gap-1.5 text-xl tracking-tight text-zinc-900 font-sans">
+            <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-1.5 py-0.5 rounded border border-[#0f0]/30 shadow-[0_0_8px_rgba(0,255,0,0.1)] tracking-widest text-xs">TUBE</span>
+          </div>
           <button 
             onClick={() => logout()}
             className="text-xs font-medium px-3 py-1.5 bg-red-50 text-red-600 rounded-md"

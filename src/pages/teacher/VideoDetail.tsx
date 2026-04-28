@@ -87,7 +87,7 @@ export default function VideoDetail() {
       setProposed(true);
     } catch (e) {
       console.error(e);
-      alert("Fout bij voorstellen aan databaas.");
+      alert("Fout bij voorstellen aan beheerder.");
     } finally {
       setIsProposing(false);
     }
@@ -170,7 +170,7 @@ export default function VideoDetail() {
         <div className="space-y-6">
           <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-sm font-mono uppercase tracking-widest text-zinc-500">Onderwijskwalificaties</h2>
+              <h2 className="text-sm font-mono uppercase tracking-widest text-zinc-500">Beoordeling</h2>
               {video?.status === 'approved' && <ShieldCheck className="w-4 h-4 text-emerald-500 ml-auto" />}
             </div>
             
@@ -181,7 +181,7 @@ export default function VideoDetail() {
                 <div className="flex flex-col gap-4">
                   <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-4 rounded-lg">
                     <p className="font-semibold mb-1">Live online resultaat</p>
-                    <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door de Databaas (AI keurmeester of goedgekeurd door schoolbeheer).</p>
+                    <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door een beheerder.</p>
                   </div>
                   
                   <button 
@@ -190,19 +190,19 @@ export default function VideoDetail() {
                     className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {isProposing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                    {proposed ? 'Voorgesteld voor review' : 'Stel voor aan Databaas'}
+                    {proposed ? 'Ter beoordeling ingestuurd' : 'Ter beoordeling insturen'}
                   </button>
                   
                   {proposed && (
                     <p className="text-xs text-emerald-600 font-medium text-center">
-                       Succes! De bron staat in de wachtrij van de Databaas.
+                       Succes! De bron staat in de wachtrij.
                     </p>
                   )}
                 </div>
               ) : video?.status === 'pending' ? (
                 <div className="text-sm text-blue-700 bg-blue-50 border border-blue-200 p-4 rounded-lg">
                   <p className="flex items-center gap-2 font-semibold mb-1">
-                    <Clock className="w-4 h-4" /> Wacht op review
+                    <Clock className="w-4 h-4" /> Wacht op beoordeling
                   </p>
                   <p>Deze bron is voorgesteld en wacht nog op goedkeuring van een beheerder.</p>
                 </div>
@@ -225,7 +225,7 @@ export default function VideoDetail() {
                         </span>
                       </div>
                       <p className="text-xs text-zinc-600 mt-2 leading-relaxed italic border-l-2 border-zinc-300 pl-2">
-                        "{assessment.aiFeedback || "Goedgekeurd door administrator."}"
+                        "{assessment.aiFeedback || "Goedgekeurd door beheerder."}"
                       </p>
                    </div>
                 ))

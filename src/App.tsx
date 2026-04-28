@@ -12,6 +12,7 @@ import GoalDetail from './pages/teacher/GoalDetail';
 import VideoDetail from './pages/teacher/VideoDetail';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReview from './pages/admin/AdminReview';
+import Tutorial from './pages/Tutorial';
 
 // Simple Router Guard
 function RoleGuard({ requiredRoles, children }: { requiredRoles: string[], children: React.ReactNode }) {
@@ -152,10 +153,10 @@ function BootSplash({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center"
           >
-            <h1 className="text-5xl font-semibold tracking-tight text-zinc-900 mb-2">
-              SLO<span className="text-zinc-400">Tube</span>
+            <h1 className="text-5xl tracking-tight text-zinc-900 flex justify-center items-center gap-2 font-sans mb-3">
+              <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-3 py-1 rounded-lg border border-[#0f0]/30 shadow-[0_0_10px_rgba(0,255,0,0.1)] tracking-widest text-3xl">TUBE</span>
             </h1>
-            <p className="text-sm font-mono tracking-widest uppercase text-zinc-500">
+            <p className="text-sm font-mono tracking-widest uppercase text-zinc-500 mt-2">
               Educatieve Hub
             </p>
           </motion.div>
@@ -178,6 +179,9 @@ export default function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route element={<Layout />}>
+            {/* General */}
+            <Route path="/tutorial" element={<Tutorial />} />
+
             {/* Teacher Routes */}
             <Route path="/teacher" element={
               <RoleGuard requiredRoles={['docent']}>

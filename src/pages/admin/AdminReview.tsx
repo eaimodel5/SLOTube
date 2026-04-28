@@ -153,7 +153,7 @@ export default function AdminReview() {
               <div className="w-12 h-12 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
                  <ShieldCheck className="w-6 h-6 text-zinc-900" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Keurmeester Dashboard</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Beoordelingsomgeving</h1>
             </div>
              <p className="text-zinc-500 text-sm max-w-2xl leading-relaxed">
               Beoordeel opgeslagen bronnen, koppel ze aan kerndoelen en keur ze goed voor docentengebruik.
@@ -322,7 +322,7 @@ export default function AdminReview() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">2</div>
-                      <h3 className="text-sm font-bold text-zinc-900">AI Kwaliteitscontrole</h3>
+                      <h3 className="text-sm font-bold text-zinc-900">Inhoudelijke controle</h3>
                     </div>
                     
                     <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-200">
@@ -334,7 +334,7 @@ export default function AdminReview() {
                         className="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 transition-colors text-sm shadow-sm"
                       >
                         {isAssessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
-                        {isAssessing ? 'AI model is aan het beoordelen...' : 'Start Analyse'}
+                        {isAssessing ? 'Aansluiting wordt gecontroleerd...' : 'Controleer aansluiting'}
                       </button>
 
                       {assessment && (
@@ -371,7 +371,7 @@ export default function AdminReview() {
                           className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm shadow-sm"
                         >
                           {isSaving ? <Loader2 className="w-5 h-5 animate-spin"/> : <CheckCircle className="w-5 h-5"/>}
-                          Keur Goed & Koppel
+                          Goedkeuren
                         </button>
                         <button 
                           onClick={() => handleDecide('rejected')}
@@ -379,7 +379,7 @@ export default function AdminReview() {
                           className="flex-1 bg-white border-2 border-zinc-200 text-zinc-700 hover:bg-zinc-50 py-3.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 text-sm"
                         >
                           <XCircle className="w-5 h-5" />
-                          Afkeuren & Verwijderen
+                          Afkeuren
                         </button>
                      </div>
                   </div>

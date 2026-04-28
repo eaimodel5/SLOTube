@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { Search, ChevronRight, PlayCircle, Loader2, Youtube } from 'lucide-react';
+import { Search, ChevronRight, PlayCircle, Loader2, Youtube, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, orderBy, query, limit, where } from 'firebase/firestore';
@@ -39,8 +39,32 @@ export default function TeacherHome() {
   });
 
   // Collapsible states
-  const [isRecentExpanded, setIsRecentExpanded] = useState(false);
-  const [isSubjectsExpanded, setIsSubjectsExpanded] = useState(false);
+  const [isRecentExpanded, setIsRecentExpanded] = useState(true);
+  const [isSubjectsExpanded, setIsSubjectsExpanded] = useState(true);
+
+  const renderThumbnail = (item: any) => {
+    const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
+    const thumbUrl = item.thumbnailUrl || item.thumbnail;
+    const hasThumb = thumbUrl && thumbUrl.length > 5;
+    
+    return (
+      <div className="relative w-full h-full bg-zinc-100 flex items-center justify-center">
+        {hasThumb ? (
+           <img 
+             src={thumbUrl} 
+             onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} 
+             alt={item.title} 
+             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+           />
+        ) : (
+           <div className="flex flex-col items-center justify-center text-zinc-400 group-hover:scale-105 transition-transform duration-300">
+             {isWeb ? <FileText className="w-8 h-8 mb-2 opacity-50" /> : <PlayCircle className="w-8 h-8 mb-2 opacity-50" />}
+             <span className="text-[10px] font-medium uppercase tracking-widest">{isWeb ? 'Website' : 'Video'}</span>
+           </div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetch('/api/goals')
@@ -188,9 +212,9 @@ export default function TeacherHome() {
         
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
-          className="relative max-w-2xl flex flex-col gap-3"
+          className="relative max-w-3xl flex flex-col gap-3"
         >
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
               <input 
@@ -198,45 +222,40 @@ export default function TeacherHome() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Zoek met een onderwerp, de URL, etc..." 
-                className="w-full pl-12 pr-4 py-4 bg-white border border-zinc-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-shadow text-base text-zinc-900"
+                className="w-full pl-12 pr-4 py-3.5 bg-zinc-100/50 border border-zinc-200 hover:border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white transition-all text-base text-zinc-900"
               />
             </div>
             <button 
               type="submit"
               disabled={isSearching || !searchQuery}
-              className="px-6 py-4 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center gap-2 transition-colors whitespace-nowrap shadow-sm shrink-0"
+              className="px-6 py-3.5 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm shrink-0"
             >
-              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Youtube className="w-5 h-5" />}
-              Live zoeken
+              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-4 h-4" />}
+              Zoeken
             </button>
           </div>
           
-          <div className="flex flex-wrap items-center gap-4 px-2 mt-1">
-            <span className="text-xs font-medium text-zinc-500 tracking-wide">Bronnen:</span>
-            {Object.keys(activeSources).map((sourceKey) => (
-              <label key={sourceKey} className="flex items-center gap-2 cursor-pointer group">
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                  activeSources[sourceKey as keyof typeof activeSources] 
-                    ? 'bg-blue-600 border-blue-600' 
-                    : 'bg-white border-zinc-300 group-hover:border-blue-400'
-                }`}>
-                  {activeSources[sourceKey as keyof typeof activeSources] && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <input 
-                  type="checkbox" 
-                  className="hidden" 
-                  checked={activeSources[sourceKey as keyof typeof activeSources]}
-                  onChange={(e) => setActiveSources(prev => ({ ...prev, [sourceKey]: e.target.checked }))}
-                />
-                <span className="text-sm text-zinc-700 capitalize font-medium select-none group-hover:text-zinc-900">
-                  {sourceKey === 'wiki' ? 'Wikipedia' : sourceKey === 'wikiwijs' ? 'Wikiwijs' : sourceKey === 'npo' ? 'NPO' : sourceKey === 'openleermateriaal' ? 'Openleermateriaal' : 'YouTube'}
-                </span>
-              </label>
-            ))}
+          <div className="flex flex-wrap items-center gap-2 mt-4 bg-zinc-50 border border-zinc-200 p-1.5 rounded-lg w-max">
+            {Object.keys(activeSources).map((sourceKey) => {
+              const label = sourceKey === 'wiki' ? 'Wikipedia' : sourceKey === 'wikiwijs' ? 'Wikiwijs' : sourceKey === 'npo' ? 'NPO' : sourceKey === 'openleermateriaal' ? 'Openleermateriaal' : 'YouTube';
+              const isActive = activeSources[sourceKey as keyof typeof activeSources];
+              return (
+                <label 
+                  key={sourceKey} 
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${
+                    isActive ? 'bg-white shadow-sm text-zinc-900 ring-1 ring-zinc-200' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100/50'
+                  }`}
+                >
+                  <input 
+                    type="checkbox" 
+                    className="w-3.5 h-3.5 text-zinc-900 rounded-sm border-zinc-300 focus:ring-zinc-900 hidden"
+                    checked={isActive}
+                    onChange={(e) => setActiveSources(prev => ({ ...prev, [sourceKey]: e.target.checked }))}
+                  />
+                  <span className="text-sm font-medium">{label}</span>
+                </label>
+              );
+            })}
           </div>
         </form>
       </section>
@@ -244,25 +263,28 @@ export default function TeacherHome() {
       {/* Matched Kerndoelen */}
       {matchedGoals && matchedGoals.length > 0 && (
         <section className="space-y-4">
-          <h2 className="text-lg font-medium text-zinc-900 flex items-center gap-2">
-            <span className="w-5 h-5 flex items-center justify-center bg-blue-100 text-blue-700 rounded text-xs font-bold font-mono">KR</span>
+          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
             Gerelateerde kerndoelen
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 divide-y divide-zinc-100 border-t border-b border-zinc-100">
             {matchedGoals.map(goal => (
               <div 
                 key={goal.id} 
                 onClick={() => navigate(`/teacher/goals/${goal.id}`)} 
-                className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all group flex flex-col"
+                className="py-4 hover:bg-zinc-50 cursor-pointer transition-colors group flex flex-col sm:flex-row gap-4"
               >
-                <div className="text-[10px] uppercase font-mono font-bold tracking-widest text-zinc-500 mb-2">{goal.subject}</div>
-                <h3 className="font-semibold text-zinc-900 line-clamp-3 group-hover:text-blue-600 transition-colors">{goal.sentence}</h3>
-                {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
-                  <p className="mt-2 text-xs text-zinc-500 line-clamp-2">{goal.description}</p>
-                )}
-                <div className="mt-auto pt-4 text-xs font-medium text-blue-600 flex items-center justify-between">
-                  <span>Kerndoel {goal.id}</span>
-                  <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                <div className="sm:w-32 shrink-0">
+                  <div className="text-xs uppercase font-semibold text-zinc-500">{goal.subject}</div>
+                  <div className="text-sm text-zinc-400 mt-1">{goal.id}</div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-medium text-zinc-900 group-hover:text-zinc-600 transition-colors">{goal.sentence}</h3>
+                  {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
+                    <p className="mt-1 text-sm text-zinc-500 line-clamp-2">{goal.description}</p>
+                  )}
+                </div>
+                <div className="hidden sm:flex items-center justify-end w-8 text-zinc-300 group-hover:text-zinc-900 transition-colors">
+                  <ChevronRight className="w-5 h-5" />
                 </div>
               </div>
             ))}
@@ -272,24 +294,21 @@ export default function TeacherHome() {
 
       {/* Database Matches */}
       {dbVideoResults && dbVideoResults.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-medium text-zinc-900 flex items-center gap-2">
-            <span className="w-5 h-5 flex items-center justify-center bg-green-100 text-green-700 rounded text-xs font-bold font-mono">DB</span>
-            Gevonden in eigen bibliotheek
+        <section className="space-y-4 pt-4">
+          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
+            Gevonden in de bibliotheek
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {dbVideoResults.map(vid => (
-               <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group">
-                  <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                    <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
-                      <PlayCircle className="w-12 h-12 text-white/90 drop-shadow-lg" />
+               <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group flex flex-col">
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                    {renderThumbnail(vid)}
+                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <h3 className="font-semibold text-zinc-900 line-clamp-2 group-hover:text-blue-600 transition-colors">{vid.title}</h3>
-                    <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle} • In Database</p>
-                  </div>
+                  <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
+                  <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
                </div>
             ))}
           </div>
@@ -298,18 +317,17 @@ export default function TeacherHome() {
 
       {/* Live YouTube Results */}
       {liveResults && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-medium text-zinc-900 flex items-center gap-2">
-            <Search className="w-5 h-5 text-amber-600" />
-            Live resultaten voor "{searchQuery}"
+        <section className="space-y-4 pt-4">
+          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
+            Live {searchQuery ? `resultaten voor "${searchQuery}"` : "resultaten"}
           </h2>
           {liveResults.length === 0 ? (
-            <div className="text-sm text-zinc-500 p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl">
-              <p className="mb-4">Geen educatief materiaal gevonden voor deze term op YouTube of NPO/Wiki bronnen.</p>
+            <div className="text-sm text-zinc-500 py-12 text-center bg-zinc-50/50 rounded-lg">
+              <p className="mb-4">Geen lesmateriaal online gevonden.</p>
               {matchedGoals && matchedGoals.length > 0 && (
-                <div className="mt-6 flex flex-col items-center">
-                  <span className="font-semibold text-zinc-700 mb-3">Suggesties op basis van gevonden kerndoelen:</span>
-                  <div className="flex flex-wrap gap-2 justify-center max-w-2xl">
+                <div className="mt-6">
+                  <span className="text-zinc-700 mb-3 block">Probeer zoektermen uit de kerndoelen:</span>
+                  <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
                     {matchedGoals.slice(0, 2).flatMap(g => [...(g.examples || []), ...(g.elaborations || [])]).slice(0, 4).map((q, i) => (
                       <button 
                         key={i} 
@@ -317,9 +335,9 @@ export default function TeacherHome() {
                           setSearchQuery(q);
                           setTimeout(() => { document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })) }, 10);
                         }}
-                        className="px-3 py-1.5 bg-white border border-zinc-200 hover:border-blue-300 hover:bg-blue-50 text-blue-600 rounded-full text-xs transition-colors text-left"
+                        className="px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-300 rounded-md text-sm text-zinc-700 transition-colors shadow-sm"
                       >
-                        "{q.substring(0, 60)}{q.length > 60 ? '...' : ''}"
+                        {q.length > 50 ? q.substring(0, 50) + '...' : q}
                       </button>
                     ))}
                   </div>
@@ -327,30 +345,28 @@ export default function TeacherHome() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {liveResults.map(vid => (
-                 <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group">
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                      <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                 <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group flex flex-col">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                      {renderThumbnail(vid)}
                       
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
-                        <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">
-                           <span className="bg-zinc-900 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">Externe bron</span>
+                        <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                           <span className="bg-white/90 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm">Artikel</span>
                         </div>
                       ) : (
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <PlayCircle className="w-12 h-12 text-white/90 drop-shadow-lg" />
+                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                          <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       )}
 
-                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded">
+                      <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
                         {vid.duration}
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <h3 className="font-semibold text-zinc-900 line-clamp-2 group-hover:text-blue-600 transition-colors">{vid.title}</h3>
-                      <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle} {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? '• Website / artikel' : '• Live YouTube'}</p>
-                    </div>
+                    <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
+                    <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
                  </div>
               ))}
             </div>
@@ -358,42 +374,39 @@ export default function TeacherHome() {
         </section>
       )}
 
-      {/* Internal DB Videos */}
-      <section className="space-y-4">
+      <section className="space-y-4 pt-6 border-t border-zinc-100">
         <button 
           type="button"
           onClick={() => setIsRecentExpanded(!isRecentExpanded)}
           className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
         >
-          <h2 className="text-lg font-medium text-zinc-900">Recente toevoegingen in de educatieve bibliotheek</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Actueel in de bibliotheek</h2>
           <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isRecentExpanded ? 'rotate-90' : ''}`} />
         </button>
         {isRecentExpanded && (
           <>
           {dbVideos.length === 0 ? (
-            <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl border-dashed">
-              <p className="text-zinc-500 text-sm">Onze interne videodatabase is nog leeg. De beheerder moet video's toevoegen via de pre-scraper.</p>
+            <div className="py-12 text-center bg-zinc-50/50 rounded-lg">
+              <p className="text-zinc-500 text-sm">De bibliotheek is nog leeg.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
               {dbVideos.map(vid => (
-                 <div key={vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.videoId}`)} className="cursor-pointer group">
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                      <img src={vid.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={vid.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                 <div key={vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.videoId}`)} className="cursor-pointer group flex flex-col">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                      {renderThumbnail(vid)}
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
-                        <div className="absolute inset-0 bg-white/60 group-hover:bg-white/40 transition-colors flex items-center justify-center">
-                           <span className="bg-zinc-900 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">Externe bron</span>
+                        <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                           <span className="bg-white/90 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm">Artikel</span>
                         </div>
                       ) : (
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <PlayCircle className="w-12 h-12 text-white/90 drop-shadow-lg" />
+                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                           <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       )}
                     </div>
-                    <div className="mt-3">
-                      <h3 className="font-semibold text-zinc-900 line-clamp-2 group-hover:text-blue-600 transition-colors">{vid.title}</h3>
-                      <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle} {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? '• Website / artikel' : ''}</p>
-                    </div>
+                    <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
+                    <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
                  </div>
               ))}
             </div>
@@ -402,33 +415,30 @@ export default function TeacherHome() {
         )}
       </section>
 
-      {/* Subjects Grid */}
-      <section className="space-y-4 mt-6">
+      {/* Subjects text list */}
+      <section className="space-y-4 pt-6 mt-6 border-t border-zinc-100 pb-12">
         <button 
           type="button"
           onClick={() => setIsSubjectsExpanded(!isSubjectsExpanded)}
           className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
         >
-          <h2 className="text-lg font-medium text-zinc-900">Blader op vakken en kerndoelen</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Vakgebieden</h2>
           <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isSubjectsExpanded ? 'rotate-90' : ''}`} />
         </button>
         {isSubjectsExpanded && (
           <>
           {subjects.length === 0 ? (
-             <div className="text-sm text-zinc-500 mt-2">Vakken laden vanuit de database...</div>
+             <div className="text-sm text-zinc-500 mt-2">Laden...</div>
           ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
                 {subjects.map(subject => (
                   <button 
                     key={subject.title}
                     onClick={() => navigate(`/teacher/goals?subject=${encodeURIComponent(subject.title)}`)}
-                    className="p-5 text-left bg-white border border-zinc-200 rounded-2xl hover:border-zinc-400 hover:shadow-sm transition-all group"
+                    className="flex justify-between items-center p-4 bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-sm rounded-xl transition-all text-left group"
                   >
-                    <h3 className="font-medium text-zinc-900 line-clamp-2">{subject.title}</h3>
-                    <div className="mt-4 flex items-center justify-between text-sm text-zinc-500">
-                      <span>{subject.count} kerndoelen</span>
-                      <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-600 transition-colors" />
-                    </div>
+                    <span className="font-semibold text-zinc-800 group-hover:text-zinc-900 transition-colors truncate pr-3">{subject.title}</span>
+                    <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-md shrink-0">{subject.count} doelen</span>
                   </button>
                 ))}
               </div>

@@ -37,7 +37,7 @@ interface Video {
 }
 
 function getSourceBadge(provider: string = '', sourceName: string = '') {
-  const normalized = provider.toLowerCase() || '';
+  const normalized = `${provider} ${sourceName}`.toLowerCase();
   if (normalized.includes('youtube')) return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100', icon: <Youtube className="w-3.5 h-3.5" />, label: 'YouTube' };
   if (normalized.includes('schooltv')) return { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-100', icon: <PlayCircle className="w-3.5 h-3.5" />, label: 'Schooltv' };
   if (normalized.includes('klokhuis')) return { bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100', icon: <PlayCircle className="w-3.5 h-3.5" />, label: 'Het Klokhuis' };
@@ -71,9 +71,31 @@ export default function GoalDetail() {
   const [isSearching, setIsSearching] = useState(false);
   const [liveResults, setLiveResults] = useState<any[] | null>(null);
   
-  // Discovery states
-  const [isDiscovering, setIsDiscovering] = useState(false);
+  const renderThumbnail = (item: any) => {
+    const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
+    const thumbUrl = item.thumbnailUrl || item.thumbnail;
+    const hasThumb = thumbUrl && thumbUrl.length > 5;
+    
+    return (
+      <div className="relative w-full h-full bg-zinc-100 flex items-center justify-center">
+        {hasThumb ? (
+           <img 
+             src={thumbUrl} 
+             onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} 
+             alt={item.title} 
+             className="w-full h-full object-cover" 
+           />
+        ) : (
+           <div className="flex flex-col items-center justify-center text-zinc-400">
+             {isWeb ? <FileText className="w-8 h-8 mb-2 opacity-50" /> : <PlayCircle className="w-8 h-8 mb-2 opacity-50" />}
+             <span className="text-[10px] font-medium uppercase tracking-widest">{isWeb ? 'Website' : 'Video'}</span>
+           </div>
+        )}
+      </div>
+    );
+  };
   const [discoveryCandidates, setDiscoveryCandidates] = useState<any[] | null>(null);
+  const [isDiscovering, setIsDiscovering] = useState(false);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -207,14 +229,14 @@ export default function GoalDetail() {
   const handleSendToReview = async (candidate: any) => {
     try {
       await createPendingVideo(candidate, id || '');
-      alert("Video is succesvol naar de review gestuurd!");
+      alert("Bron is succesvol ter beoordeling ingestuurd!");
       
       // Remove from list
       setDiscoveryCandidates(prev => prev ? prev.filter(c => c.id !== candidate.id) : null);
       
     } catch(e: any) {
       console.error(e);
-      alert(e.message || "Kon de video niet toevoegen aan review.");
+      alert(e.message || "Kon de bron niet ter beoordeling sturen.");
     }
   };
 
@@ -294,12 +316,12 @@ export default function GoalDetail() {
 
       {/* Database Videos Section */}
       <div className="space-y-4">
-        <div className="flex justify-between items-end">
-          <h2 className="text-xl font-semibold text-zinc-900 border-b-2 border-emerald-500 pb-1 inline-block">Goedgekeurd Lesmateriaal</h2>
-          <span className="text-sm font-mono text-zinc-500">{videos.length} RESULTATEN</span>
+        <div className="flex justify-between items-end mb-6">
+          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Goedgekeurd Lesmateriaal</h2>
+          <span className="text-sm font-medium text-zinc-500">{videos.length} items</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {videos.map((video) => {
             const badge = getSourceBadge(video.provider, video.sourceName);
             const assessed = video.assessedGoals?.find(g => g.goalId === id);
@@ -307,13 +329,13 @@ export default function GoalDetail() {
               <div 
                 key={video.id} 
                 onClick={() => navigate(`/teacher/videos/${encodeURIComponent(video.id)}`)}
-                className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 bg-white border border-zinc-200 rounded-xl hover:shadow-md cursor-pointer transition-all group"
+                className="flex flex-col cursor-pointer group"
               >
                 {/* Thumbnail */}
-                <div className="relative w-full sm:w-48 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                  <img src={video.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    {badge.icon.type === PlayCircle ? <PlayCircle className="w-8 h-8 text-white/90 drop-shadow flex-shrink-0" /> : <Globe className="w-8 h-8 text-white/90 drop-shadow flex-shrink-0" />}
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                  {renderThumbnail(video)}
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                    {badge.icon.type === PlayCircle ? <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" /> : <Globe className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </div>
                   {video.duration && video.duration !== 'Web/Bron' && (
                     <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
@@ -323,30 +345,28 @@ export default function GoalDetail() {
                 </div>
 
                 {/* Data */}
-                <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex flex-col">
                   <div className="flex items-start justify-between gap-4 mb-1">
-                    <h3 className="text-base sm:text-lg font-semibold text-zinc-900 line-clamp-2 leading-tight group-hover:text-emerald-700 transition-colors">{video.title}</h3>
+                    <h3 className="text-base font-medium text-zinc-900 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2 line-clamp-2">{video.title}</h3>
                   </div>
                   
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-zinc-500">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-medium border ${badge.bg} ${badge.text} ${badge.border}`}>
-                      {badge.icon}
+                  <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500 truncate">
+                    <span className="flex items-center gap-1.5 font-medium text-zinc-600">
                       {badge.label}
                     </span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-300"></span>
-                    <span>{video.origin === 'manual' ? 'Handmatig toegevoegd' : 'Automatische match'}</span>
+                    <span>•</span>
+                    <span className="truncate">{video.origin === 'manual' ? 'Handmatig' : 'Automatische match'}</span>
                   </div>
 
-                  <div className="mt-auto pt-4 flex flex-wrap items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      Goedgekeurd door docent
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="inline-flex items-center text-emerald-600 text-xs font-medium">
+                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                      Goedgekeurd
                     </span>
                     {assessed && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono uppercase text-zinc-400 tracking-wider">Sterkte:</span>
-                        <span className="text-sm font-semibold text-zinc-700">{assessed.matchScore}%</span>
-                      </div>
+                      <span className="text-xs text-zinc-500 font-medium">
+                        {assessed.matchScore}% match
+                      </span>
                     )}
                   </div>
                 </div>
@@ -365,28 +385,28 @@ export default function GoalDetail() {
       </div>
 
       {/* Discovery Section */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-zinc-900 border-b-2 border-slate-200 pb-1 inline-block">Nieuwe suggesties zoeken</h2>
+      <div className="space-y-4 pt-8 border-t border-zinc-100">
+        <h2 className="text-2xl font-semibold text-zinc-900 tracking-tight">Nieuwe suggesties zoeken</h2>
         
         {/* Live Search Form */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
-          <p className="text-sm text-zinc-500 mb-6 max-w-2xl">
+        <div className="bg-zinc-50/50 rounded-lg p-6">
+          <p className="text-sm text-zinc-600 mb-6 max-w-2xl">
             Vind direct nieuw materiaal voor dit doel. Gebruik de automatische zoeker over alle beschikbare bronnen, of voeg handmatig een video of artikel toe via een link.
           </p>
           
-          <div className="flex flex-col md:flex-row gap-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-6 mb-8 border-b border-zinc-200 pb-8">
             <button 
               onClick={handleDiscovery}
               disabled={isDiscovering}
-              className="w-full md:w-1/2 px-6 py-4 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-3 transition-colors shadow-sm"
+              className="px-6 py-3.5 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
-              {isDiscovering ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-              Genereer 12 suggesties (Automatisch)
+              {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              Genereer automatisch 12 suggesties
             </button>
           </div>
 
-          <div className="relative border-t border-zinc-100 pt-6">
-            <span className="absolute -top-3 left-6 bg-white px-2 text-xs font-medium text-zinc-400">Of zoek handmatig</span>
+          <div className="relative">
+            <h3 className="text-sm font-medium text-zinc-900 mb-3">Of zoek handmatig met een term of link:</h3>
             <form 
               onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
               className="flex flex-col sm:flex-row gap-3"
@@ -398,15 +418,15 @@ export default function GoalDetail() {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Zoekterm of plak een link (bijv. Wikiwijs of YouTube)" 
-                  className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white transition-all text-sm text-zinc-900"
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-900"
                 />
               </div>
               <div className="w-full sm:w-48 shrink-0">
                  <select
-                   className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white transition-all text-sm text-zinc-700"
+                   className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-700"
                    onChange={(e) => {
                      if(e.target.value) {
-                        setSearchQuery(prev => prev + " " + e.target.value);
+                        setSearchQuery(prev => prev.trim() + " " + e.target.value);
                      }
                    }}
                  >
@@ -420,7 +440,7 @@ export default function GoalDetail() {
               <button 
                 type="submit"
                 disabled={isSearching || !searchQuery}
-                className="w-full sm:w-auto px-6 py-3 bg-white border border-zinc-300 text-zinc-700 rounded-xl text-sm font-medium hover:bg-zinc-50 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-sm shrink-0"
+                className="w-full sm:w-auto px-6 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-sm shrink-0"
               >
                 {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 Zoeken
@@ -442,7 +462,7 @@ export default function GoalDetail() {
                   <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
                     {/* Thumbnail */}
                     <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                      <img src={candidate.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={candidate.title} className="w-full h-full object-cover" />
+                      {renderThumbnail(candidate)}
                       {candidate.duration && candidate.duration !== 'Web/Bron' && (
                         <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
                           {candidate.duration}
@@ -480,7 +500,7 @@ export default function GoalDetail() {
                           onClick={() => handleSendToReview(candidate)}
                           className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
                         >
-                          Naar review sturen
+                          Ter beoordeling insturen
                         </button>
                       </div>
                     </div>
@@ -517,7 +537,7 @@ export default function GoalDetail() {
                     <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
                       {/* Thumbnail */}
                       <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                        <img src={candidate.thumbnailUrl} onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1610484826967-09c57207009e?auto=format&fit=crop&q=80&w=800"; }} alt={candidate.title} className="w-full h-full object-cover" />
+                        {renderThumbnail(candidate)}
                         {candidate.duration && candidate.duration !== 'Web/Bron' && (
                           <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
                             {candidate.duration}
@@ -558,7 +578,7 @@ export default function GoalDetail() {
                             onClick={() => handleSendToReview(candidate)}
                             className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
                           >
-                            Naar review sturen
+                            Ter beoordeling insturen
                           </button>
                         </div>
                       </div>
