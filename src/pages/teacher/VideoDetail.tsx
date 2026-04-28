@@ -180,8 +180,8 @@ export default function VideoDetail() {
               ) : video?.status === 'live_preview' ? (
                 <div className="flex flex-col gap-4">
                   <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                    <p className="font-semibold mb-1">Live online resultaat</p>
-                    <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door een beheerder.</p>
+                    <p className="font-semibold mb-1">Online gevonden bron</p>
+                    <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door een reviewer of beheerder.</p>
                   </div>
                   
                   <button 

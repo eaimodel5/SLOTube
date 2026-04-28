@@ -64,8 +64,8 @@ export default function Layout() {
             }}
             className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition mb-4 group"
           >
-            <span className="font-medium text-zinc-700 group-hover:text-red-600 capitalize">
-              Role: {role}
+            <span className="font-medium text-zinc-700 group-hover:text-red-600">
+              Ingelogd als {role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}
             </span>
             <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-red-600" />
           </button>

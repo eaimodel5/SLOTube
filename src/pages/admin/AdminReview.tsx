@@ -189,8 +189,8 @@ export default function AdminReview() {
               {pendingVideos.length === 0 ? (
                 <div className="p-8 text-center text-zinc-500 text-sm flex flex-col items-center justify-center h-full">
                   <CheckCircle className="w-10 h-10 text-zinc-300 mb-3" />
-                  <p className="font-medium text-zinc-900 mb-1">Alles is weggewerkt!</p>
-                  <p className="text-xs">Gebruik de Pre-Scraper om nieuwe bronnen te vinden.</p>
+                  <p className="font-medium text-zinc-900 mb-1">Geen items in de wachtrij.</p>
+                  <p className="text-xs">Nieuwe suggesties verschijnen hier zodra iemand materiaal naar review stuurt.</p>
                 </div>
               ) : pendingVideos.map(video => (
                 <div 
@@ -361,8 +361,11 @@ export default function AdminReview() {
                   <div className="pt-6 border-t border-zinc-200 space-y-4">
                      <div className="flex items-center gap-2 mb-1">
                       <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">3</div>
-                      <h3 className="text-sm font-bold text-zinc-900">Definitieve Actie</h3>
+                      <h3 className="text-sm font-bold text-zinc-900">Eindbeslissing</h3>
                     </div>
+                    <p className="text-sm text-zinc-600 mb-4 max-w-xl">
+                      Kies eerst een kerndoel om goed te keuren en te koppelen. Afgekeurde items verdwijnen uit de wachtrij en worden niet getoond aan docenten. De reviewer neemt de eindbeslissing.
+                    </p>
                      
                      <div className="flex flex-col sm:flex-row gap-3">
                         <button 

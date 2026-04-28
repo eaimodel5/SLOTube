@@ -11,26 +11,32 @@ const steps = [
     bg: "bg-black"
   },
   {
-    title: "1. Zoeken",
-    desc: "Zoek direct op een onderwerp, YouTube URL, of webartikel in de zoekbalk. SLOTube zoekt in beschikbare bronnen en toont materiaal dat past bij het kerndoel.",
-    icon: <Search className="w-12 h-12 text-blue-500" />,
-    bg: "bg-blue-50"
-  },
-  {
-    title: "2. Kerndoelen Verbinden",
-    desc: "Als je iets zoekt, suggereert SLOTube direct onderliggende SLO-kerndoelen. Je kunt direct browsen via specifieke vakgebieden.",
+    title: "1. Zoek een kerndoel",
+    desc: "Kies een vakgebied en open een SLO-kerndoel. Daar zie je goedgekeurd materiaal en nieuwe suggesties.",
     icon: <Database className="w-12 h-12 text-emerald-500" />,
     bg: "bg-emerald-50"
   },
   {
-    title: "3. Beoordelen",
-    desc: "Docenten en experts kunnen gevonden lesmateriaal en de bijbehorende kerndoelen beoordelen. Alleen goedgekeurde materialen belanden in de vaste mediatheek.",
+    title: "2. Laat suggesties zoeken",
+    desc: "SLOTube zoekt in beschikbare bronnen en toont materiaal dat inhoudelijk past bij het kerndoel.",
+    icon: <Search className="w-12 h-12 text-blue-500" />,
+    bg: "bg-blue-50"
+  },
+  {
+    title: "3. Bekijk waarom iets gevonden is",
+    desc: "Bij elke suggestie zie je de bron, matchscore en een korte reden. Zo kun je snel beoordelen of het materiaal bruikbaar is.",
+    icon: <Search className="w-12 h-12 text-indigo-500" />,
+    bg: "bg-indigo-50"
+  },
+  {
+    title: "4. Stuur materiaal naar review",
+    desc: "Nieuw materiaal wordt eerst als 'Wacht op review' opgeslagen. Pas na goedkeuring verschijnt het bij docenten.",
     icon: <ShieldCheck className="w-12 h-12 text-purple-500" />,
     bg: "bg-purple-50"
   },
   {
-    title: "4. Lesgeven",
-    desc: "Alles wordt opgemaakt in een gestructureerde lesomgeving met makkelijke previews. Veilig en overzichtelijk voor in de klas.",
+    title: "5. Gebruik goedgekeurd materiaal",
+    desc: "Docenten zien alleen materiaal dat is goedgekeurd. Zo blijft de lijst overzichtelijk en betrouwbaar.",
     icon: <GraduationCap className="w-12 h-12 text-amber-500" />,
     bg: "bg-amber-50"
   }

@@ -41,6 +41,9 @@ export default function TeacherHome() {
   // Collapsible states
   const [isRecentExpanded, setIsRecentExpanded] = useState(true);
   const [isSubjectsExpanded, setIsSubjectsExpanded] = useState(true);
+  const [isKerndoelenExpanded, setIsKerndoelenExpanded] = useState(true);
+  const [isBibliotheekExpanded, setIsBibliotheekExpanded] = useState(true);
+  const [isLiveExpanded, setIsLiveExpanded] = useState(true);
 
   const renderThumbnail = (item: any) => {
     const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
@@ -141,6 +144,11 @@ export default function TeacherHome() {
     // Group matches by subject and pick the best representation
     const topMatches = matches.slice(0, 3);
     setMatchedGoals(topMatches);
+    
+    // Expand sections on search
+    setIsKerndoelenExpanded(true);
+    setIsBibliotheekExpanded(true);
+    setIsLiveExpanded(true);
 
     // Search own database
     try {
@@ -262,107 +270,63 @@ export default function TeacherHome() {
 
       {/* Matched Kerndoelen */}
       {matchedGoals && matchedGoals.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
-            Gerelateerde kerndoelen
-          </h2>
-          <div className="grid grid-cols-1 divide-y divide-zinc-100 border-t border-b border-zinc-100">
-            {matchedGoals.map(goal => (
-              <div 
-                key={goal.id} 
-                onClick={() => navigate(`/teacher/goals/${goal.id}`)} 
-                className="py-4 hover:bg-zinc-50 cursor-pointer transition-colors group flex flex-col sm:flex-row gap-4"
-              >
-                <div className="sm:w-32 shrink-0">
-                  <div className="text-xs uppercase font-semibold text-zinc-500">{goal.subject}</div>
-                  <div className="text-sm text-zinc-400 mt-1">{goal.id}</div>
+        <section className="space-y-4 pt-2">
+          <button 
+            type="button"
+            onClick={() => setIsKerndoelenExpanded(!isKerndoelenExpanded)}
+            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
+          >
+            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Gerelateerde kerndoelen</h2>
+            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isKerndoelenExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {isKerndoelenExpanded && (
+            <div className="grid grid-cols-1 divide-y divide-zinc-100 border-t border-b border-zinc-100 mt-2">
+              {matchedGoals.map(goal => (
+                <div 
+                  key={goal.id} 
+                  onClick={() => navigate(`/teacher/goals/${goal.id}`)} 
+                  className="py-4 hover:bg-zinc-50 cursor-pointer transition-colors group flex flex-col sm:flex-row gap-4"
+                >
+                  <div className="sm:w-32 shrink-0">
+                    <div className="text-xs uppercase font-semibold text-zinc-500">{goal.subject}</div>
+                    <div className="text-sm text-zinc-400 mt-1">{goal.id}</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base font-medium text-zinc-900 group-hover:text-zinc-600 transition-colors">{goal.sentence}</h3>
+                    {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
+                      <p className="mt-1 text-sm text-zinc-500 line-clamp-2">{goal.description}</p>
+                    )}
+                  </div>
+                  <div className="hidden sm:flex items-center justify-end w-8 text-zinc-300 group-hover:text-zinc-900 transition-colors">
+                    <ChevronRight className="w-5 h-5" />
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-medium text-zinc-900 group-hover:text-zinc-600 transition-colors">{goal.sentence}</h3>
-                  {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
-                    <p className="mt-1 text-sm text-zinc-500 line-clamp-2">{goal.description}</p>
-                  )}
-                </div>
-                <div className="hidden sm:flex items-center justify-end w-8 text-zinc-300 group-hover:text-zinc-900 transition-colors">
-                  <ChevronRight className="w-5 h-5" />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
       {/* Database Matches */}
       {dbVideoResults && dbVideoResults.length > 0 && (
         <section className="space-y-4 pt-4">
-          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
-            Gevonden in de bibliotheek
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {dbVideoResults.map(vid => (
-               <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group flex flex-col">
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
-                    {renderThumbnail(vid)}
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </div>
-                  <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
-                  <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
-               </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Live YouTube Results */}
-      {liveResults && (
-        <section className="space-y-4 pt-4">
-          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight border-b border-zinc-100 pb-2">
-            Live {searchQuery ? `resultaten voor "${searchQuery}"` : "resultaten"}
-          </h2>
-          {liveResults.length === 0 ? (
-            <div className="text-sm text-zinc-500 py-12 text-center bg-zinc-50/50 rounded-lg">
-              <p className="mb-4">Geen lesmateriaal online gevonden.</p>
-              {matchedGoals && matchedGoals.length > 0 && (
-                <div className="mt-6">
-                  <span className="text-zinc-700 mb-3 block">Probeer zoektermen uit de kerndoelen:</span>
-                  <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
-                    {matchedGoals.slice(0, 2).flatMap(g => [...(g.examples || []), ...(g.elaborations || [])]).slice(0, 4).map((q, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => {
-                          setSearchQuery(q);
-                          setTimeout(() => { document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })) }, 10);
-                        }}
-                        className="px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-300 rounded-md text-sm text-zinc-700 transition-colors shadow-sm"
-                      >
-                        {q.length > 50 ? q.substring(0, 50) + '...' : q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {liveResults.map(vid => (
-                 <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group flex flex-col">
+          <button 
+            type="button"
+            onClick={() => setIsBibliotheekExpanded(!isBibliotheekExpanded)}
+            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
+          >
+            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Gevonden in de bibliotheek</h2>
+            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isBibliotheekExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          {isBibliotheekExpanded && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
+              {dbVideoResults.map(vid => (
+                 <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group flex flex-col">
                     <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
                       {renderThumbnail(vid)}
-                      
-                      {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
-                        <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
-                           <span className="bg-white/90 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm">Artikel</span>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                          <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      )}
-
-                      <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
-                        {vid.duration}
+                      <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                        <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </div>
                     <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
@@ -370,6 +334,75 @@ export default function TeacherHome() {
                  </div>
               ))}
             </div>
+          )}
+        </section>
+      )}
+
+      {/* Live YouTube Results */}
+      {liveResults && (
+        <section className="space-y-4 pt-4">
+          <button 
+            type="button"
+            onClick={() => setIsLiveExpanded(!isLiveExpanded)}
+            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
+          >
+            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Live {searchQuery ? `resultaten voor "${searchQuery}"` : "resultaten"}</h2>
+            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isLiveExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          
+          {isLiveExpanded && (
+            <>
+            {liveResults.length === 0 ? (
+              <div className="text-sm text-zinc-500 py-12 text-center bg-zinc-50/50 rounded-lg">
+                <p className="mb-4">Geen lesmateriaal online gevonden.</p>
+                {matchedGoals && matchedGoals.length > 0 && (
+                  <div className="mt-6">
+                    <span className="text-zinc-700 mb-3 block">Probeer zoektermen uit de kerndoelen:</span>
+                    <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
+                      {matchedGoals.slice(0, 2).flatMap(g => [...(g.examples || []), ...(g.elaborations || [])]).slice(0, 4).map((q, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => {
+                            setSearchQuery(q);
+                            setTimeout(() => { document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })) }, 10);
+                          }}
+                          className="px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-300 rounded-md text-sm text-zinc-700 transition-colors shadow-sm"
+                        >
+                          {q.length > 50 ? q.substring(0, 50) + '...' : q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
+                {liveResults.map(vid => (
+                   <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group flex flex-col">
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                        {renderThumbnail(vid)}
+                        
+                        {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
+                          <div className="absolute inset-0 bg-white/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                             <span className="bg-white/90 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm">Artikel</span>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                            <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        )}
+  
+                        <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                          {vid.duration}
+                        </div>
+                      </div>
+                      <h3 className="font-medium text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
+                      <p className="text-sm text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
+                   </div>
+                ))}
+              </div>
+            )}
+            </>
           )}
         </section>
       )}

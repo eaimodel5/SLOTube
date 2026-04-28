@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Globe, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Globe, ChevronDown, ChevronUp, FileText, ChevronRight } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createPendingVideo } from '../../lib/firebase/videoRepository';
@@ -65,6 +65,9 @@ export default function GoalDetail() {
 
   // UI state
   const [showExtra, setShowExtra] = useState(false);
+  const [isGoedgekeurdExpanded, setIsGoedgekeurdExpanded] = useState(true);
+  const [isSuggestiesExpanded, setIsSuggestiesExpanded] = useState(true);
+  const [isHandmatigExpanded, setIsHandmatigExpanded] = useState(true);
 
   // Live search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,6 +151,7 @@ export default function GoalDetail() {
     }
 
     setIsSearching(true);
+    setIsHandmatigExpanded(true);
     try {
       const isGenericUrl = (searchQuery.startsWith('http://') || searchQuery.startsWith('https://')) && !(searchQuery.includes('youtube.com') || searchQuery.includes('youtu.be'));
       
@@ -197,6 +201,7 @@ export default function GoalDetail() {
     }
 
     setIsDiscovering(true);
+    setIsSuggestiesExpanded(true);
     setDiscoveryCandidates(null);
     try {
       const resp = await fetch('/api/discovery/goal', {
@@ -315,73 +320,82 @@ export default function GoalDetail() {
       </div>
 
       {/* Database Videos Section */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-end mb-6">
-          <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Goedgekeurd Lesmateriaal</h2>
-          <span className="text-sm font-medium text-zinc-500">{videos.length} items</span>
-        </div>
+      <div className="space-y-4 pt-2 border-t border-zinc-100">
+        <button 
+          type="button"
+          onClick={() => setIsGoedgekeurdExpanded(!isGoedgekeurdExpanded)}
+          className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
+        >
+          <div className="flex items-baseline gap-4">
+            <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Goedgekeurd Lesmateriaal</h2>
+            <span className="text-sm font-medium text-zinc-500">{videos.length} items</span>
+          </div>
+          <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isGoedgekeurdExpanded ? 'rotate-90' : ''}`} />
+        </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videos.map((video) => {
-            const badge = getSourceBadge(video.provider, video.sourceName);
-            const assessed = video.assessedGoals?.find(g => g.goalId === id);
-            return (
-              <div 
-                key={video.id} 
-                onClick={() => navigate(`/teacher/videos/${encodeURIComponent(video.id)}`)}
-                className="flex flex-col cursor-pointer group"
-              >
-                {/* Thumbnail */}
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
-                  {renderThumbnail(video)}
-                  <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    {badge.icon.type === PlayCircle ? <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" /> : <Globe className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />}
-                  </div>
-                  {video.duration && video.duration !== 'Web/Bron' && (
-                    <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
-                      {video.duration}
+        {isGoedgekeurdExpanded && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+            {videos.map((video) => {
+              const badge = getSourceBadge(video.provider, video.sourceName);
+              const assessed = video.assessedGoals?.find(g => g.goalId === id);
+              return (
+                <div 
+                  key={video.id} 
+                  onClick={() => navigate(`/teacher/videos/${encodeURIComponent(video.id)}`)}
+                  className="flex flex-col cursor-pointer group"
+                >
+                  {/* Thumbnail */}
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                    {renderThumbnail(video)}
+                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                      {badge.icon.type === PlayCircle ? <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" /> : <Globe className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />}
                     </div>
-                  )}
-                </div>
-
-                {/* Data */}
-                <div className="flex flex-col">
-                  <div className="flex items-start justify-between gap-4 mb-1">
-                    <h3 className="text-base font-medium text-zinc-900 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2 line-clamp-2">{video.title}</h3>
-                  </div>
-                  
-                  <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500 truncate">
-                    <span className="flex items-center gap-1.5 font-medium text-zinc-600">
-                      {badge.label}
-                    </span>
-                    <span>•</span>
-                    <span className="truncate">{video.origin === 'manual' ? 'Handmatig' : 'Automatische match'}</span>
-                  </div>
-
-                  <div className="mt-2 flex items-center gap-3">
-                    <span className="inline-flex items-center text-emerald-600 text-xs font-medium">
-                      <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                      Goedgekeurd
-                    </span>
-                    {assessed && (
-                      <span className="text-xs text-zinc-500 font-medium">
-                        {assessed.matchScore}% match
-                      </span>
+                    {video.duration && video.duration !== 'Web/Bron' && (
+                      <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                        {video.duration}
+                      </div>
                     )}
                   </div>
+
+                  {/* Data */}
+                  <div className="flex flex-col">
+                    <div className="flex items-start justify-between gap-4 mb-1">
+                      <h3 className="text-base font-medium text-zinc-900 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2 line-clamp-2">{video.title}</h3>
+                    </div>
+                    
+                    <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500 truncate">
+                      <span className="flex items-center gap-1.5 font-medium text-zinc-600">
+                        {badge.label}
+                      </span>
+                      <span>•</span>
+                      <span className="truncate">{video.origin === 'manual' ? 'Handmatig' : 'Automatische match'}</span>
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="inline-flex items-center text-emerald-600 text-xs font-medium">
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                        Goedgekeurd
+                      </span>
+                      {assessed && (
+                        <span className="text-xs text-zinc-500 font-medium">
+                          {assessed.matchScore}% match
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {videos.length === 0 && (
-             <div className="p-8 sm:p-12 text-center bg-zinc-50 border border-zinc-200 rounded-xl border-dashed">
-               <h3 className="text-zinc-900 font-medium mb-2">Nog geen goedgekeurd lesmateriaal.</h3>
-               <p className="text-zinc-500 text-sm mb-6 max-w-sm mx-auto">
-                 Er zijn nog geen materialen goedgekeurd voor dit kerndoel. Start hieronder de automatische suggesties of importeer zelf een link.
-               </p>
-             </div>
-          )}
-        </div>
+              );
+            })}
+            {videos.length === 0 && (
+               <div className="p-8 sm:p-12 text-center bg-zinc-50 border border-zinc-200 rounded-xl border-dashed col-span-full">
+                 <h3 className="text-zinc-900 font-medium mb-2">Nog geen goedgekeurd lesmateriaal.</h3>
+                 <p className="text-zinc-500 text-sm mb-6 max-w-sm mx-auto">
+                   Er zijn nog geen materialen goedgekeurd voor dit kerndoel. Start hieronder de automatische suggesties of importeer zelf een link.
+                 </p>
+               </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Discovery Section */}
@@ -452,84 +466,17 @@ export default function GoalDetail() {
         {/* Discovery Results */}
         {discoveryCandidates && discoveryCandidates.length > 0 && (
           <div className="space-y-4 mt-6">
-            <h3 className="text-lg font-medium text-zinc-900">Automatische Resultaten</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {discoveryCandidates.map((candidate, idx) => {
-                const sLabel = getScoreLabel(candidate.matchScore || 0);
-                const badge = getSourceBadge(candidate.provider, candidate.sourceName);
-                
-                return (
-                  <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
-                    {/* Thumbnail */}
-                    <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
-                      {renderThumbnail(candidate)}
-                      {candidate.duration && candidate.duration !== 'Web/Bron' && (
-                        <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
-                          {candidate.duration}
-                        </div>
-                      )}
-                    </div>
-                    {/* Data */}
-                    <div className="flex flex-col flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-medium border text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
-                          {badge.icon}
-                          {badge.label}
-                        </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
-                          {candidate.matchScore}% - {sLabel.label}
-                        </span>
-                      </div>
-                      
-                      <h4 className="text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
-                      
-                      <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
-                        <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
-                        <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
-                        {candidate.matchEvidence && candidate.matchEvidence.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {candidate.matchEvidence.map((ev: string, i: number) => (
-                              <span key={i} className="bg-white border border-zinc-200 text-zinc-500 text-[10px] px-1.5 py-0.5 rounded">{ev}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="mt-2 self-end">
-                        <button 
-                          onClick={() => handleSendToReview(candidate)}
-                          className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
-                        >
-                          Ter beoordeling insturen
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
-        {discoveryCandidates && discoveryCandidates.length === 0 && (
-          <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl rounded-dashed">
-            <p className="text-zinc-600 font-medium mb-1">Geen sterke suggesties gevonden.</p>
-            <p className="text-sm text-zinc-500">Probeer handmatig te zoeken of gebruik een praktijkvoorbeeld uit de SLO-data hierboven.</p>
-          </div>
-        )}
-
-        {/* Live Manual Results */}
-        {liveResults && (
-          <div className="space-y-4 mt-6">
-            <h3 className="text-lg font-medium text-zinc-900">Handmatige Resultaten</h3>
-            {liveResults.length === 0 ? (
-              <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl">
-                <p className="text-zinc-600 font-medium">Niets gevonden voor "{searchQuery}".</p>
-                <p className="text-sm text-zinc-500">Controleer de zoekterm of de link en probeer het opnieuw.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {liveResults.map((candidate, idx) => {
+            <button 
+              type="button"
+              onClick={() => setIsSuggestiesExpanded(!isSuggestiesExpanded)}
+              className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
+            >
+              <h3 className="text-lg font-medium text-zinc-900">Automatische Resultaten</h3>
+              <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isSuggestiesExpanded ? 'rotate-90' : ''}`} />
+            </button>
+            {isSuggestiesExpanded && (
+              <div className="grid grid-cols-1 gap-4 mt-2">
+                {discoveryCandidates.map((candidate, idx) => {
                   const sLabel = getScoreLabel(candidate.matchScore || 0);
                   const badge = getSourceBadge(candidate.provider, candidate.sourceName);
                   
@@ -551,29 +498,26 @@ export default function GoalDetail() {
                             {badge.icon}
                             {badge.label}
                           </span>
-                          {candidate.matchScore > 0 && (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
-                              {candidate.matchScore}% - {sLabel.label}
-                            </span>
-                          )}
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                            {candidate.matchScore}% - {sLabel.label}
+                          </span>
                         </div>
                         
                         <h4 className="text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
                         
-                        {candidate.matchReason && (
-                          <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
-                            <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
-                            <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
-                          </div>
-                        )}
+                        <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
+                          <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
+                          <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
+                          {candidate.matchEvidence && candidate.matchEvidence.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {candidate.matchEvidence.map((ev: string, i: number) => (
+                                <span key={i} className="bg-white border border-zinc-200 text-zinc-500 text-[10px] px-1.5 py-0.5 rounded">{ev}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         
-                        <div className="mt-auto pt-4 self-end flex gap-3">
-                          <button 
-                            onClick={() => window.open(candidate.sourceUrl || `https://youtube.com/watch?v=${candidate.videoId}`, '_blank')}
-                            className="px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors"
-                          >
-                            Bekijk bron
-                          </button>
+                        <div className="mt-2 self-end">
                           <button 
                             onClick={() => handleSendToReview(candidate)}
                             className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
@@ -586,6 +530,95 @@ export default function GoalDetail() {
                   );
                 })}
               </div>
+            )}
+          </div>
+        )}
+        
+        {discoveryCandidates && discoveryCandidates.length === 0 && (
+          <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl rounded-dashed">
+            <p className="text-zinc-600 font-medium mb-1">Geen sterke suggesties gevonden. Probeer handmatig zoeken of gebruik een voorbeeld uit de SLO-toelichting.</p>
+          </div>
+        )}
+
+        {/* Live Manual Results */}
+        {liveResults && (
+          <div className="space-y-4 mt-6">
+            <button 
+              type="button"
+              onClick={() => setIsHandmatigExpanded(!isHandmatigExpanded)}
+              className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
+            >
+              <h3 className="text-lg font-medium text-zinc-900">Handmatige Resultaten</h3>
+              <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isHandmatigExpanded ? 'rotate-90' : ''}`} />
+            </button>
+            {isHandmatigExpanded && (
+              <>
+              {liveResults.length === 0 ? (
+                <div className="p-8 text-center bg-zinc-50 border border-zinc-200 rounded-xl mt-2">
+                  <p className="text-zinc-600 font-medium">Niets gevonden voor "{searchQuery}".</p>
+                  <p className="text-sm text-zinc-500">Controleer de zoekterm of de link en probeer het opnieuw.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 mt-2">
+                  {liveResults.map((candidate, idx) => {
+                    const sLabel = getScoreLabel(candidate.matchScore || 0);
+                    const badge = getSourceBadge(candidate.provider, candidate.sourceName);
+                    
+                    return (
+                      <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
+                        {/* Thumbnail */}
+                        <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
+                          {renderThumbnail(candidate)}
+                          {candidate.duration && candidate.duration !== 'Web/Bron' && (
+                            <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                              {candidate.duration}
+                            </div>
+                          )}
+                        </div>
+                        {/* Data */}
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-medium border text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
+                              {badge.icon}
+                              {badge.label}
+                            </span>
+                            {candidate.matchScore > 0 && (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                                {candidate.matchScore}% - {sLabel.label}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <h4 className="text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
+                          
+                          {candidate.matchReason && (
+                            <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
+                              <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
+                              <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
+                            </div>
+                          )}
+                          
+                          <div className="mt-auto pt-4 self-end flex gap-3">
+                            <button 
+                              onClick={() => window.open(candidate.sourceUrl || `https://youtube.com/watch?v=${candidate.videoId}`, '_blank')}
+                              className="px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors"
+                            >
+                              Bekijk bron
+                            </button>
+                            <button 
+                              onClick={() => handleSendToReview(candidate)}
+                              className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
+                            >
+                              Ter beoordeling insturen
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              </>
             )}
           </div>
         )}

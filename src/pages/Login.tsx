@@ -195,7 +195,7 @@ export default function Login() {
               }`}
             >
               <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Docentenomgeving</h3>
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Docentenomgeving</h3>
                 <p className="text-sm text-zinc-500 mt-1 truncate">Zoek en gebruik goedgekeurd lesmateriaal</p>
               </div>
               {loadingRole === 'docent' ? (
@@ -215,7 +215,7 @@ export default function Login() {
               }`}
             >
               <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Beoordelingsomgeving</h3>
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Beoordelingsomgeving</h3>
                 <p className="text-sm text-zinc-500 mt-1 truncate">Beoordeel en valideer nieuw materiaal</p>
               </div>
               {loadingRole === 'databaas' && !showCodeModal ? (
@@ -237,7 +237,7 @@ export default function Login() {
               }`}
             >
               <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-[#0f0] transition-colors">Beheerdersomgeving</h3>
+                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Beheerdersomgeving</h3>
                 <p className="text-sm text-zinc-500 mt-1 truncate">Systeeminstellingen en toegangsbeheer</p>
               </div>
               {loadingRole === 'admin' ? (
@@ -260,8 +260,8 @@ export default function Login() {
       {showCodeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 overflow-hidden">
-            <h3 className="text-lg font-semibold text-zinc-900 mb-2">Databaas toegang</h3>
-            <p className="text-sm text-zinc-500 mb-6">Voer uw persoonlijke code in om door te gaan.</p>
+            <h3 className="text-lg font-semibold text-zinc-900 mb-2">Reviewtoegang</h3>
+            <p className="text-sm text-zinc-500 mb-6">Voer uw reviewcode in om door te gaan.</p>
             <input 
               type="text" 
               value={databaasCode}
@@ -294,7 +294,7 @@ export default function Login() {
       {showAdminModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 overflow-hidden">
-            <h3 className="text-lg font-semibold text-zinc-900 mb-2">Admin toegang</h3>
+            <h3 className="text-lg font-semibold text-zinc-900 mb-2">Beheertoegang</h3>
             <p className="text-sm text-zinc-500 mb-6">Voer uw beheerdersgegevens in.</p>
             <div className="space-y-4 mb-2">
               <input 
