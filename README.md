@@ -1,38 +1,33 @@
-# SLOTube - Educatieve Videotheek Metadata & AI
+# EAI - SLOTube Application
 
-**Ontwikkeld door: H. Visser - EAI Analyse & Advies**
+Welkom bij SLOTube! Dit project is een **PWA/React/Node.js-stack** specifiek gebouwd voor het indexeren, beoordelen en live koppelen van educatieve (YouTube- en Wiki-)content aan **SLO-kerndoelen**. 
 
-SLOTube is een platform voor het opzoeken van (en bewaren van) educatieve videocontent, direct gekoppeld aan de officiële SLO kerndoelen. Het platform maakt gebruik van AIom de didactische waarde van video's te beoordelen en te mappen op het curriculum.
+Deze repo bevat zowel de client (React Frontend) als de server (Express API Backend).
 
-## Systeemoverzicht
+## 📚 Volledige Documentatie
+Voor een geresimeerde en stapsgewijze uitleg van:
+- De semantische database pipelines.
+- AI (Gemini) en platform (YouTube) API architecturen.
+- Alle opties, rollen (Docent, Databaas, Admin) en functionaliteiten in de applicatie.
 
-Het systeem bestaat uit drie hoofdcomponenten:
-1. **YouTube Pre-Scraper**: Voor het efficiënt doorzoeken van YouTube zonder onnodige API-belasting.
-2. **AI Keurmeester**: Een admin-panel waar video's worden beoordeeld door Gemini AI op basis van SLO-matrices.
-3. **Teacher Dashboard**: Een beveiligde kluis van goedgekeurde video's, gesorteerd op vak en kerndoel.
+**Lees dan het overdrachtsdocument:**
+👉 **[DOCUMENTATION.md](./DOCUMENTATION.md)**
 
-## Installatie & Configuratie
+## 🚀 Snel Starten (Development)
 
-Om deze applicatie operationeel te maken na overdracht, moeten de volgende stappen worden gevolgd:
+1. Kopieer `.env.example` naar `.env` en vul je API keys in (waaronder YouTube en Gemini).
+2. Start dev server:
+   ```bash
+   npm run dev
+   ```
+3. Navigeer in je browser naar `http://localhost:3000`.
 
-### 1. Omgevingsvariabelen
-Maak een `.env` bestand aan op basis van `.env.example` en vul de volgende keys in:
-- `GEMINI_API_KEY`: Voor de AI-beoordelingen.
-- `YOUTUBE_API_KEY`: Voor de zoekfunctionaliteit.
-- `VITE_FIREBASE_*`: Diverse keys voor de databaseverbinding (zie `.env.example`).
+## 📦 Tech Stack
+- Frontend: `React 18`, `Tailwind CSS`, `Lucide React`
+- Routing: `react-router-dom`
+- Database: `Firebase Firestore (V9)`
+- Backend: `Express.js`, `Vite Middleware`
+- AI Assessment: `Gemini Pro / Flash via Google GenAI SDK`
 
-### 2. Firebase
-Vul de juiste configuratie in `firebase-applet-config.json`. Zorg dat de Firestore database is ingesteld met de bijbehorende `firestore.rules`.
-
-### 3. Starten
-```bash
-npm install
-npm run dev
-```
-
-## Disclaimer & Contact
-Dit project is opgeleverd als een functioneel framework waarbij de logica centraal staat. Alle herleidbare persoonlijke credentials zijn verwijderd voor de overdracht.
-
-**Projectleider:**
-H. Visser
-EAI Analyse & Advies
+## 🔒 Security
+Zie Firestore Rules (`firestore.rules`) en de authenticatiemodules voor wachtwoordbeveiliging en toegangsbeheer voor de review-sectie.

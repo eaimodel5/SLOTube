@@ -68,6 +68,7 @@ export default function GoalDetail() {
   const [isGoedgekeurdExpanded, setIsGoedgekeurdExpanded] = useState(true);
   const [isSuggestiesExpanded, setIsSuggestiesExpanded] = useState(true);
   const [isHandmatigExpanded, setIsHandmatigExpanded] = useState(true);
+  const [statusMsg, setStatusMsg] = useState<{type: 'error'|'success', text: string} | null>(null);
 
   // Live search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,6 +151,7 @@ export default function GoalDetail() {
       return;
     }
 
+    setStatusMsg(null);
     setIsSearching(true);
     setIsHandmatigExpanded(true);
     try {
@@ -171,21 +173,30 @@ export default function GoalDetail() {
         ? { url: searchQuery, goal: goal }
         : { queries: effectiveQueries, maxResultsPerQuery: 5, goal: goal };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const resp = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
+        body: JSON.stringify(bodyData),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       const data = await resp.json();
       if (resp.ok) {
         setLiveResults(data);
         sessionStorage.setItem('live_search_results', JSON.stringify(data));
       } else {
-        alert(data.error || "Fout bij de zoek/scrape opdracht.");
+        setStatusMsg({ type: 'error', text: data.error || "Fout bij de zoek/scrape opdracht." });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Er is iets misgegaan bij het zoeken.");
+      if (e.name === 'AbortError') {
+        setStatusMsg({ type: 'error', text: "Het zoeken duurt te lang (timeout)." });
+      } else {
+        setStatusMsg({ type: 'error', text: "Er is iets misgegaan bij het zoeken." });
+      }
     } finally {
       setIsSearching(false);
     }
@@ -200,6 +211,7 @@ export default function GoalDetail() {
       return;
     }
 
+    setStatusMsg(null);
     setIsDiscovering(true);
     setIsSuggestiesExpanded(true);
     setDiscoveryCandidates(null);
@@ -221,27 +233,28 @@ export default function GoalDetail() {
         const filtered = (data.results || []).filter((r: any) => (r.matchScore || 0) >= 45);
         setDiscoveryCandidates(filtered);
       } else {
-        alert(data.error || "Mislukt om suggesties te zoeken.");
+        setStatusMsg({ type: 'error', text: data.error || "Mislukt om suggesties te zoeken." });
       }
     } catch (e) {
       console.error(e);
-      alert("Er is iets misgegaan bij het zoeken naar suggesties.");
+      setStatusMsg({ type: 'error', text: "Er is iets misgegaan bij het zoeken naar suggesties." });
     } finally {
       setIsDiscovering(false);
     }
   };
 
   const handleSendToReview = async (candidate: any) => {
+    setStatusMsg(null);
     try {
       await createPendingVideo(candidate, id || '');
-      alert("Bron is succesvol ter beoordeling ingestuurd!");
+      setStatusMsg({ type: 'success', text: "Bron is succesvol ter beoordeling ingestuurd!" });
       
       // Remove from list
       setDiscoveryCandidates(prev => prev ? prev.filter(c => c.id !== candidate.id) : null);
       
     } catch(e: any) {
       console.error(e);
-      alert(e.message || "Kon de bron niet ter beoordeling sturen.");
+      setStatusMsg({ type: 'error', text: e.message || "Kon de bron niet ter beoordeling sturen." });
     }
   };
 
@@ -265,7 +278,7 @@ export default function GoalDetail() {
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-semibold text-zinc-900 leading-tight">
+          <h1 className="text-xl md:text-2xl font-semibold text-zinc-900 leading-tight">
             {goal.sentence}
           </h1>
           {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
@@ -402,6 +415,15 @@ export default function GoalDetail() {
       <div className="space-y-4 pt-8 border-t border-zinc-100">
         <h2 className="text-2xl font-semibold text-zinc-900 tracking-tight">Nieuwe suggesties zoeken</h2>
         
+        {statusMsg && (
+          <div className={`p-4 rounded-xl flex items-center justify-between shadow-sm ${statusMsg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+            <p className="text-sm font-medium">{statusMsg.text}</p>
+            <button onClick={() => setStatusMsg(null)} className="opacity-70 hover:opacity-100 transition-opacity">
+              <ShieldX className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
         {/* Live Search Form */}
         <div className="bg-zinc-50/50 rounded-lg p-6">
           <p className="text-sm text-zinc-600 mb-6 max-w-2xl">
@@ -444,11 +466,15 @@ export default function GoalDetail() {
                      }
                    }}
                  >
-                   <option value="">-- Doelgroep --</option>
-                   <option value="voor leerlingen">Voor Leerlingen</option>
-                   <option value="uitleg kinderen">Uitleg Kinderen</option>
-                   <option value="voor docenten">Voor Docenten</option>
-                   <option value="didactiek">Didactiek</option>
+                   <option value="">-- Doelgroep (SLO) --</option>
+                   <option value="po groep 1-2">PO groep 1-2</option>
+                   <option value="po groep 3-4">PO groep 3-4</option>
+                   <option value="po groep 5-6">PO groep 5-6</option>
+                   <option value="po groep 7-8">PO groep 7-8</option>
+                   <option value="vo onderbouw">VO Onderbouw</option>
+                   <option value="vmbo">VMBO</option>
+                   <option value="havo vwo">HAVO / VWO</option>
+                   <option value="speciaal onderwijs">Speciaal Onderwijs</option>
                  </select>
               </div>
               <button 

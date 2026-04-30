@@ -212,7 +212,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50/50 pb-20">
+    <div className="w-full bg-zinc-50/50 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         
         {/* Header */}
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
               <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center shadow-md">
                  <Wand2 className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Beheersysteem</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900">Beheersysteem</h1>
             </div>
             <p className="text-zinc-500 text-sm max-w-2xl leading-relaxed">
               Importeer bronnen, bekijk de systeemanalyse en beheer keurmeestertoegang en review-wachtrijen centraal.
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div>
-                 <p className="text-4xl font-bold text-zinc-900 tracking-tight">{stat.value}</p>
+                 <p className="text-3xl md:text-4xl font-bold text-zinc-900 tracking-tight">{stat.value}</p>
                  <p className="text-sm font-medium text-zinc-500 mt-1">{stat.label}</p>
               </div>
             </div>
@@ -301,11 +301,15 @@ export default function AdminDashboard() {
                          }
                        }}
                      >
-                       <option value="">-- Doelgroep --</option>
-                       <option value="voor leerlingen">Voor Leerlingen</option>
-                       <option value="uitleg kinderen">Uitleg Kinderen</option>
-                       <option value="voor docenten">Voor Docenten</option>
-                       <option value="didactiek">Didactiek</option>
+                       <option value="">-- Doelgroep (SLO) --</option>
+                       <option value="po groep 1-2">PO groep 1-2</option>
+                       <option value="po groep 3-4">PO groep 3-4</option>
+                       <option value="po groep 5-6">PO groep 5-6</option>
+                       <option value="po groep 7-8">PO groep 7-8</option>
+                       <option value="vo onderbouw">VO Onderbouw</option>
+                       <option value="vmbo">VMBO</option>
+                       <option value="havo vwo">HAVO / VWO</option>
+                       <option value="speciaal onderwijs">Speciaal Onderwijs</option>
                      </select>
                   </div>
                   <button 

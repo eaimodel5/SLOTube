@@ -55,7 +55,7 @@ export default function GoalBrowser() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Officiële Kerndoelen</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">Officiële Kerndoelen</h1>
         <p className="text-zinc-500 mt-1">Blader door de SLO-kerndoelen gebaseerd op het curriculum en ontdek lesmateriaal.</p>
       </div>
 
@@ -65,6 +65,7 @@ export default function GoalBrowser() {
         </div>
         <input
           type="text"
+          autoFocus
           className="block w-full pl-10 pr-3 py-3 border border-zinc-200 rounded-xl leading-5 bg-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 sm:text-sm transition-colors"
           placeholder="Typ om direct te zoeken in kerndoelen, vakken of codes..."
           value={searchQuery}

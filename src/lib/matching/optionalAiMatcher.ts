@@ -17,7 +17,7 @@ export async function runAiAssessment(
   video: VideoCandidate,
   goal: NormalizedSloGoal
 ): Promise<AiAssessmentResult | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) return null;
 
   try {

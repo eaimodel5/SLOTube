@@ -70,20 +70,30 @@ export default function AdminReview() {
     setIsAssessing(true);
     setAssessment(null);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for AI
+
       const resp = await fetch('/api/ai/assess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ video: selectedVideo, goal })
+        body: JSON.stringify({ video: selectedVideo, goal }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       const data = await resp.json();
       if (resp.ok) {
         setAssessment(data);
       } else {
         alert(data.error || "Kon de AI Beoordeling niet uitvoeren.");
       }
-    } catch(e) {
+    } catch(e: any) {
       console.error(e);
-      alert("Er is een netwerkfout opgetreden bij de AI assessment.");
+      if (e.name === 'AbortError') {
+        alert("De AI heeft teveel tijd nodig om te antwoorden (Timeout).");
+      } else {
+        alert("Er is een netwerkfout opgetreden bij de AI assessment.");
+      }
     }
     setIsAssessing(false);
   };
@@ -143,7 +153,7 @@ export default function AdminReview() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50/50 pb-20">
+    <div className="w-full bg-zinc-50/50 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
         
         {/* Header */}
@@ -153,7 +163,7 @@ export default function AdminReview() {
               <div className="w-12 h-12 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
                  <ShieldCheck className="w-6 h-6 text-zinc-900" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Beoordelingsomgeving</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900">Beoordelingsomgeving</h1>
             </div>
              <p className="text-zinc-500 text-sm max-w-2xl leading-relaxed">
               Beoordeel opgeslagen bronnen, koppel ze aan kerndoelen en keur ze goed voor docentengebruik.

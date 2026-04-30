@@ -1,9 +1,35 @@
 import { useAuth } from '../context/AuthContext';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut, HelpCircle } from 'lucide-react';
+import { useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Layout() {
   const { role, logout } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    // 1. Dynamic document titles for better context
+    const titles: Record<string, string> = {
+      '/teacher': 'Ontdek - SLOTube',
+      '/teacher/goals': 'Doelen - SLOTube',
+      '/admin': 'Beheer - SLOTube',
+      '/admin/review': 'Reviewomgeving - SLOTube',
+      '/tutorial': 'Tutorial - SLOTube'
+    };
+    
+    let title = titles[location.pathname] || 'SLOTube';
+    if (location.pathname.includes('/goals/')) title = 'Kerndoel - SLOTube';
+    if (location.pathname.includes('/videos/')) title = 'Lesmateriaal - SLOTube';
+    
+    document.title = title;
+
+    // 2. Scroll to top on route change for the inner scroll container
+    const mainEl = document.getElementById('main-scroll-container');
+    if (mainEl) {
+      mainEl.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
 
   const teacherNav = [
     { to: "/teacher", icon: BookOpen, label: "Ontdek & zoek" },
@@ -22,7 +48,7 @@ export default function Layout() {
   const navItems = role === 'admin' ? adminNav : role === 'databaas' ? databaasNav : teacherNav;
 
   return (
-    <div className="flex h-screen bg-[#f5f5f5] overflow-hidden">
+    <div className="flex w-full max-w-full h-[100dvh] bg-[#f5f5f5] overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="w-64 bg-white border-r border-[#e5e5e5] hidden md:flex flex-col">
         <div className="p-6 border-b border-[#e5e5e5]">
@@ -78,7 +104,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden">
         {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-[#e5e5e5] p-4 flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xl tracking-tight text-zinc-900 font-sans">
@@ -114,8 +140,19 @@ export default function Layout() {
         </nav>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
-          <Outlet />
+        <main id="main-scroll-container" className="flex-1 w-full max-w-full overflow-y-auto overflow-x-hidden pb-16 md:pb-0 bg-zinc-50/30">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

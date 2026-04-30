@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { Search, ChevronRight, PlayCircle, Loader2, Youtube, FileText } from 'lucide-react';
+import { Search, ChevronRight, PlayCircle, Loader2, Youtube, FileText, ShieldX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, orderBy, query, limit, where } from 'firebase/firestore';
@@ -28,6 +28,7 @@ export default function TeacherHome() {
   const [isSearching, setIsSearching] = useState(false);
   const [liveResults, setLiveResults] = useState<any[] | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{type: 'error'|'success', text: string} | null>(null);
   
   // Toggles for sources
   const [activeSources, setActiveSources] = useState({
@@ -35,7 +36,8 @@ export default function TeacherHome() {
     wiki: true,
     npo: true,
     wikiwijs: true,
-    openleermateriaal: true
+    openleermateriaal: true,
+    general: true
   });
 
   // Collapsible states
@@ -120,6 +122,7 @@ export default function TeacherHome() {
       return;
     }
 
+    setStatusMsg(null);
     setIsSearching(true);
     
     // Check locally for goals that match the search query
@@ -187,11 +190,17 @@ export default function TeacherHome() {
         ? { url: searchQuery }
         : { queries: effectiveQueries, maxResultsPerQuery: 5, sources: activeSources };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
       const resp = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData)
+        body: JSON.stringify(bodyData),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+      
       const data = await resp.json();
       if (resp.ok) {
         // Safe live results
@@ -199,11 +208,15 @@ export default function TeacherHome() {
         // Save to session so VideoDetail can read title/desc if it's not in db
         sessionStorage.setItem('live_search_results', JSON.stringify(data));
       } else {
-        alert(data.error || "Fout bij YouTube zoeken.");
+        setStatusMsg({ type: 'error', text: data.error || "Fout bij YouTube zoeken." });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Er is iets misgegaan bij het zoeken.");
+      if (e.name === 'AbortError') {
+        setStatusMsg({ type: 'error', text: "Het zoeken duurt te lang. Probeert u het nog eens, of specificeer de zoekopdracht." });
+      } else {
+        setStatusMsg({ type: 'error', text: "Er is iets misgegaan bij het zoeken." });
+      }
     } finally {
       setIsSearching(false);
     }
@@ -214,10 +227,19 @@ export default function TeacherHome() {
       {/* Header section with Search */}
       <section className="space-y-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Lesmateriaal vinden</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">Lesmateriaal vinden</h1>
           <p className="text-zinc-500 mt-1">Zoek in de actuele lesdatabase of zoek live online bronnen via YouTube of weblinks.</p>
         </div>
         
+        {statusMsg && (
+          <div className={`p-4 rounded-xl flex items-center justify-between shadow-sm ${statusMsg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+            <p className="text-sm font-medium">{statusMsg.text}</p>
+            <button onClick={() => setStatusMsg(null)} className="opacity-70 hover:opacity-100 transition-opacity">
+              <ShieldX className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
           className="relative max-w-3xl flex flex-col gap-3"
@@ -245,7 +267,13 @@ export default function TeacherHome() {
           
           <div className="flex flex-wrap items-center gap-2 mt-4 bg-zinc-50 border border-zinc-200 p-1.5 rounded-lg w-max">
             {Object.keys(activeSources).map((sourceKey) => {
-              const label = sourceKey === 'wiki' ? 'Wikipedia' : sourceKey === 'wikiwijs' ? 'Wikiwijs' : sourceKey === 'npo' ? 'NPO' : sourceKey === 'openleermateriaal' ? 'Openleermateriaal' : 'YouTube';
+              let label = sourceKey;
+              if (sourceKey === 'wiki') label = 'Wikipedia';
+              else if (sourceKey === 'wikiwijs') label = 'Wikiwijs';
+              else if (sourceKey === 'npo') label = 'NPO';
+              else if (sourceKey === 'openleermateriaal') label = 'Openleermateriaal';
+              else if (sourceKey === 'youtube') label = 'YouTube';
+              else if (sourceKey === 'general') label = 'Algemeen Web';
               const isActive = activeSources[sourceKey as keyof typeof activeSources];
               return (
                 <label 
@@ -322,7 +350,7 @@ export default function TeacherHome() {
           {isBibliotheekExpanded && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
               {dbVideoResults.map(vid => (
-                 <div key={vid.youtubeId} onClick={() => navigate(`/teacher/videos/${vid.youtubeId}`)} className="cursor-pointer group flex flex-col">
+                 <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
                     <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
                       {renderThumbnail(vid)}
                       <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
@@ -425,7 +453,7 @@ export default function TeacherHome() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-2">
               {dbVideos.map(vid => (
-                 <div key={vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.videoId}`)} className="cursor-pointer group flex flex-col">
+                 <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
                     <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
                       {renderThumbnail(vid)}
                       {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (

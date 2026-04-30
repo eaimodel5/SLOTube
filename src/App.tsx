@@ -128,7 +128,7 @@ function BootSplash({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="flex flex-col items-center"
           >
-            <div className="text-zinc-900 text-6xl font-black tracking-tighter mb-4">
+            <div className="text-zinc-900 text-4xl sm:text-6xl font-black tracking-tighter mb-4">
               EAI
             </div>
             <motion.div 
@@ -153,8 +153,8 @@ function BootSplash({ onComplete }: { onComplete: () => void }) {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center"
           >
-            <h1 className="text-5xl tracking-tight text-zinc-900 flex justify-center items-center gap-2 font-sans mb-3">
-              <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-3 py-1 rounded-lg border border-[#0f0]/30 shadow-[0_0_10px_rgba(0,255,0,0.1)] tracking-widest text-3xl">TUBE</span>
+            <h1 className="text-3xl sm:text-5xl tracking-tight text-zinc-900 flex justify-center items-center gap-2 font-sans mb-3 flex-wrap">
+              <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-3 py-1 rounded-lg border border-[#0f0]/30 shadow-[0_0_10px_rgba(0,255,0,0.1)] tracking-widest text-xl sm:text-3xl">TUBE</span>
             </h1>
             <p className="text-sm font-mono tracking-widest uppercase text-zinc-500 mt-2">
               Educatieve Hub
