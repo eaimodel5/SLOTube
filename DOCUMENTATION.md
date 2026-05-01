@@ -48,17 +48,21 @@ De reis van kerndoel tot gecertificeerd lesmateriaal in SLOTube:
 
 1. **Data Indexering (Admin)**: Beheerder voedt in de "Beheer" applicatie kerndoel-data (SLO kerndoelen). De doelen bevatten metadata (id, titel, omschrijving, leergebied).
 2. **Consultatie (Visueel)**: Docenten filteren (of zoeken lokaal) door deze kerndoelen in de **Ontdek-module**. Ze selecteren een doel (bijv. "Aap, Noot, Mies spelling - PO 3-4").
-3. **Content Exploratie**:
-   Ze gebruiken de Live Serach engine, die backend naar YouTube reikt. Resultaten met een zekere pedagogische waarde worden aangeboden.
-4. **Queueing (Wachtrij)**: Docent selecteert "Pas dit toe op het doel", waarna het item asynchroon als `status: 'pending'` document in Firestore wordt bewaard via `createPendingVideo()`.
-5. **AI Beoordeling**: Beheerder / Databaas opent het voorstel in het `AdminReview` portaal. De Admin trigger de `Assess met AI`, dit zendt het kerndoel + video detail over de beveiligde backend proxy `/api/ai/assess` naar de Gemini Pro modellen. Gemini retourneert een weging en argumentatie (score: 0-100%).
-6. **Fiat / Publicatie**: Het team (menselijke revisie is leidend) keurt een voorgestelde bron goed. Het document wordt overgezet naar `status: 'approved'`.
-7. **Consumptie**: Docent ziet de videokaart nu officieel binnen het specifieke kerndoel profiel met de groene stempel.
+3. **Automatische Discovery & Pre-Search (AI)**:
+   - *Query Generatie*: Een Gemini LLM genereert direct geoptimaliseerde zoektermen op basis van het gekozen kerndoel.
+   - *Pre-Search Evaluatie*: Een AI beslist proactief of het zinvol is om een YouTube API aanroep te doen ("Heeft dit specifieke doelpotentie op Youtube?"). Dit bespaart onnodige API-kosten en vervuiling.
+   - *Parallelle Externe API's*: Het systeem zoekt gelijktijdig via YouTube en Web (zoals NPO, Wikiwijs, Wikipedia, Openleermateriaal).
+4. **Content Exploratie (Handmatig)**: Naast Auto-Discovery kunnen docenten ook de *Live Search engine* gebruiken voor eigen zoekopdrachten.
+5. **Queueing (Wachtrij)**: Docent selecteert "Pas dit toe op het doel", waarna het item asynchroon als `status: 'pending'` document in Firestore wordt bewaard via `createPendingVideo()`.
+6. **AI Beoordeling**: Beheerder / Databaas opent het voorstel in het `AdminReview` portaal en gebruikt `Assess met AI` (Gemini Pro) voor een objectief match-advies (score: 0-100%).
+7. **Fiat / Publicatie**: Het team keurt een voorgestelde bron goed (`status: 'approved'`).
+8. **Consumptie**: Docent ziet de videokaart officieel binnen het specifieke kerndoel profiel met een groene stempel.
 
 ---
 
 ## 4. Technologische Pipeline
 - **Vite Middleware**: Server start op **Vite SSR/Middleware** modes zodat Express frontend én backend serveert.
+- **/api/discovery/goal**: Nieuwe Auto-Discovery endpoint. Gebruikt een architectuur met *modular discovery providers* en voert generatieve 'pre-searches' uit om gerichte zoekresultaten te behalen en API limieten te sparen.
 - **/api/youtube/search**: De web-scraper is uitgebreid naar YouTube v3 search integratie om specifieke en ge-whiteliste channels (uit wikiwijs, Schooltv etc.) te betrekken. Vereist `YOUTUBE_API_KEY`.
 - **/api/ai/assess**: Voert validatietaken uit met een Language Model (Gemini). Vereist `GEMINI_API_KEY`.
 - **Styling**: **Tailwind CSS**. Custom UI Componenten worden benaderd middels een Mobile-First patroon. De wrapper `min-h-[100dvh]` om te voorkomen dat knoppen onder iOS bottom-bars en Android navigation-bars vallen.

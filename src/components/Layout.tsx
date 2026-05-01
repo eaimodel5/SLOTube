@@ -1,12 +1,14 @@
 import { useAuth } from '../context/AuthContext';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut, HelpCircle } from 'lucide-react';
-import { useEffect } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut, HelpCircle, Menu, X, Home } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Layout() {
   const { role, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // 1. Dynamic document titles for better context
@@ -29,6 +31,9 @@ export default function Layout() {
     if (mainEl) {
       mainEl.scrollTo(0, 0);
     }
+    
+    // Close mobile menu on navigate
+    setMobileMenuOpen(false);
   }, [location.pathname]);
 
   const teacherNav = [
@@ -46,12 +51,17 @@ export default function Layout() {
   ];
 
   const navItems = role === 'admin' ? adminNav : role === 'databaas' ? databaasNav : teacherNav;
+  
+  const homeRoute = role === 'admin' ? '/admin' : role === 'databaas' ? '/admin/review' : '/teacher';
 
   return (
     <div className="flex w-full max-w-full h-[100dvh] bg-[#f5f5f5] overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="w-64 bg-white border-r border-[#e5e5e5] hidden md:flex flex-col">
-        <div className="p-6 border-b border-[#e5e5e5]">
+        <div 
+          className="p-6 border-b border-[#e5e5e5] cursor-pointer hover:bg-zinc-50 transition-colors"
+          onClick={() => navigate(homeRoute)}
+        >
           <div className="flex items-center gap-1.5 mb-1 text-2xl tracking-tight text-zinc-900 font-sans">
             <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-1.5 py-0.5 rounded border border-[#0f0]/30 shadow-[0_0_8px_rgba(0,255,0,0.1)] tracking-widest text-sm">TUBE</span>
           </div>
@@ -88,12 +98,13 @@ export default function Layout() {
             onClick={() => {
               logout();
             }}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition mb-4 group"
+            className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-50 border border-zinc-200 rounded-lg hover:bg-zinc-100 hover:text-zinc-900 hover:border-zinc-300 transition mb-4 group"
+            title="Wissel van rol"
           >
-            <span className="font-medium text-zinc-700 group-hover:text-red-600">
-              Ingelogd als {role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}
+            <span className="font-medium text-zinc-700 group-hover:text-zinc-900">
+              Als {role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}
             </span>
-            <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-red-600" />
+            <LogOut className="w-3 h-3 text-zinc-400 group-hover:text-zinc-900" />
           </button>
           <div className="text-center w-full pb-2">
             <span className="text-[10px] font-mono leading-tight uppercase tracking-widest text-zinc-400 block px-2">
@@ -104,43 +115,81 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden">
+      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative">
         {/* Mobile Header */}
-        <header className="md:hidden bg-white border-b border-[#e5e5e5] p-4 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xl tracking-tight text-zinc-900 font-sans">
+        <header className="md:hidden bg-white border-b border-[#e5e5e5] p-4 flex items-center justify-between z-40 relative">
+          <div 
+            className="flex items-center gap-1.5 text-xl tracking-tight text-zinc-900 font-sans cursor-pointer"
+            onClick={() => navigate(homeRoute)}
+          >
             <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-1.5 py-0.5 rounded border border-[#0f0]/30 shadow-[0_0_8px_rgba(0,255,0,0.1)] tracking-widest text-xs">TUBE</span>
           </div>
           <button 
-            onClick={() => logout()}
-            className="text-xs font-medium px-3 py-1.5 bg-red-50 text-red-600 rounded-md"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 -mr-2 text-zinc-600 hover:text-zinc-900 focus:outline-none"
           >
-            Uitloggen
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </header>
 
-        {/* Mobile Navigation (Bottom Bar) */}
-        <nav className="md:hidden bg-white border-t border-[#e5e5e5] flex items-center justify-around fixed bottom-0 left-0 right-0 z-50 pb-safe">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/teacher" || item.to === "/admin"}
-              className={({ isActive }) =>
-                `flex flex-col items-center gap-1 p-3 text-[10px] transition-colors flex-1 ${
-                  isActive 
-                    ? "text-zinc-900 font-medium" 
-                    : "text-zinc-500 hover:text-zinc-900"
-                }`
-              }
+        {/* Mobile Menu Backdrop */}
+        {mobileMenuOpen && (
+          <div 
+            className="md:hidden fixed inset-0 bg-black/20 z-40"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Mobile Menu Slide-out */}
+        <div 
+          className={`md:hidden fixed top-[65px] left-0 right-0 bottom-0 bg-white z-50 transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}
+        >
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/teacher" || item.to === "/admin"}
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-4 py-4 rounded-xl text-base transition-colors border ${
+                    isActive 
+                      ? "bg-zinc-900 border-zinc-900 text-white font-medium" 
+                      : "bg-zinc-50 border-zinc-100 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`
+                }
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          
+          <div className="p-6 border-t border-zinc-100 bg-zinc-50 pb-safe">
+            <div className="text-xs font-mono uppercase tracking-widest text-zinc-400 mb-3 block">Account & Rol</div>
+            <button 
+              onClick={() => {
+                logout();
+              }}
+              className="w-full flex items-center justify-between px-4 py-4 text-sm bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors shadow-sm"
             >
-              <item.icon className="w-5 h-5" />
-              <span className="truncate w-full text-center">{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
+              <div className="flex flex-col items-start gap-1">
+                <span className="font-medium text-zinc-900 text-sm">
+                  Rol wisselen / Uitloggen
+                </span>
+                <span className="text-zinc-500 text-xs">
+                  Nu ingelogd als {role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}
+                </span>
+              </div>
+              <LogOut className="w-5 h-5 text-zinc-400" />
+            </button>
+            <div className="mt-8 text-center text-[10px] font-mono leading-relaxed uppercase tracking-widest text-zinc-400">
+              H. Visser EAI Analyse & Advies
+            </div>
+          </div>
+        </div>
 
         {/* Main Content */}
-        <main id="main-scroll-container" className="flex-1 w-full max-w-full overflow-y-auto overflow-x-hidden pb-16 md:pb-0 bg-zinc-50/30">
+        <main id="main-scroll-container" className="flex-1 w-full max-w-full overflow-y-auto overflow-x-hidden bg-zinc-50/30 relative z-0 pb-safe">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

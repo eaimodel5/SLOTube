@@ -3,7 +3,7 @@ import { DiscoveryProvider, ProviderSearchInput, RawCandidate } from "./provider
 export const youtubeProvider: DiscoveryProvider = {
   sourceId: "youtube",
   async search({ queries, maxResults }): Promise<RawCandidate[]> {
-    const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY;
+    const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY || process.env.VITE_YOUTUBE_API_KEY;
     if (!apiKey) return [];
 
     const results: RawCandidate[] = [];

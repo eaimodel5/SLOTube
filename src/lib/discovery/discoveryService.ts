@@ -1,3 +1,5 @@
+import { GoogleGenAI } from "@google/genai";
+import { evaluateYouTubePotential } from "./youtubePresearch";
 import { NormalizedSloGoal } from "../slo/sloTypes";
 import { generateQueriesForGoal } from "./queryGenerator";
 import { youtubeProvider } from "./providers/youtubeProvider";
@@ -52,9 +54,20 @@ export async function runDiscoveryForGoal(
     duplicateCount: 0
   };
 
-  // Run all providers in parallel
+  // Validate YouTube potential if youtube is enabled
+  let finalProviders = enabledProviders;
+  if (finalProviders.some(p => p.sourceId === 'youtube')) {
+    const hasYTPotential = await evaluateYouTubePotential(goal);
+    if (!hasYTPotential) {
+      finalProviders = finalProviders.filter(p => p.sourceId !== 'youtube');
+      diagnostics.sourcesUsed = finalProviders.map(p => p.sourceId);
+      console.log(`[Discovery] Skipped YouTube API for goal: ${goal.sentence}`);
+    }
+  }
+
+  // Run all typical providers in parallel
   const results = await Promise.all(
-    enabledProviders.map(p => p.search({ goal, queries, maxResults }))
+    finalProviders.map(p => p.search({ goal, queries, maxResults }))
   );
 
   results.forEach(res => rawCandidates.push(...res));
@@ -74,7 +87,7 @@ export async function runDiscoveryForGoal(
     const matched = matchVideoToGoal(raw, goal);
     
     // Filter by threshold
-    if (matched.score < 30) { // Slightly lower threshold for raw discovery before manual review
+    if (matched.score < 5) { // Lower threshold for raw discovery so we actually get items back
       diagnostics.rejectedCount++;
       continue;
     }

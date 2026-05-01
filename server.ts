@@ -179,7 +179,7 @@ async function startServer() {
   });
 
   app.post("/api/youtube/search", async (req, res) => {
-    const { goalId, queries, maxResultsPerQuery = 5, sources = { youtube: true, wiki: true, npo: true, wikiwijs: true, openleermateriaal: true, general: true }, goal } = req.body;
+    const { goalId, queries, maxResultsPerQuery = 5, sources = { youtube: true, wiki: true, npo: true, wikiwijs: true, general: true }, goal } = req.body;
     const apiKey = process.env.YOUTUBE_API_KEY || process.env.YOUT_API_KEY || process.env.VITE_YOUTUBE_API_KEY;
 
     if (!queries || !Array.isArray(queries) || queries.length === 0) {
@@ -213,13 +213,9 @@ async function startServer() {
            // Youtube Search
            let searchData: any = { items: [] };
            if (sources.youtube) {
-             const educationalQuery = query.toLowerCase().includes('uitleg') || query.toLowerCase().includes('school') 
-               ? query 
-               : `${query} uitleg onderwijs`;
-
-             const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relevanceLanguage=nl&safeSearch=moderate&videoEmbeddable=true&maxResults=${maxResultsPerQuery}&q=${encodeURIComponent(educationalQuery)}&key=${apiKey}`;
+             const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&safeSearch=moderate&videoEmbeddable=true&maxResults=${maxResultsPerQuery}&q=${encodeURIComponent(query)}&key=${apiKey}`;
              
-             console.log(`[YouTube API] Fetching search for query: ${educationalQuery}`);
+             console.log(`[YouTube API] Fetching search for query: ${query}`);
              const searchResponse = await fetch(searchUrl);
              
              if (!searchResponse.ok) {
@@ -266,12 +262,11 @@ async function startServer() {
            }
            
            // Fetch web results via DDG (for NPO, Wikiwijs, Open Leermateriaal, General)
-           if (sources.npo || sources.wikiwijs || sources.openleermateriaal || sources.general) {
+           if (sources.npo || sources.wikiwijs || sources.general) {
              try {
                const terms = [];
                if (sources.npo) terms.push("npo");
                if (sources.wikiwijs) terms.push("wikiwijs");
-               if (sources.openleermateriaal) terms.push("openleermateriaal OR impuls");
                
                let webQuery = query;
                if (terms.length > 0 && !sources.general) {
@@ -301,14 +296,13 @@ async function startServer() {
                     if (title && url && !url.includes('google.com/url')) {
                       if (url.startsWith('//')) url = 'https:' + url;
                       
-                      const origin = url.includes('npo') ? 'NPO' : url.includes('wikiwijs') ? 'Wikiwijs' : url.includes('impuls') || url.includes('openleermateriaal') ? 'Openleermateriaal' : 'Web';
+                      const origin = url.includes('npo') ? 'NPO' : url.includes('wikiwijs') ? 'Wikiwijs' : 'Web';
                       
                       // Filter if general is false, we only want URLs from selected sources
                       let isValidSource = sources.general;
                       if (!isValidSource) {
                          if (sources.npo && url.includes('npo')) isValidSource = true;
                          if (sources.wikiwijs && url.includes('wikiwijs')) isValidSource = true;
-                         if (sources.openleermateriaal && (url.includes('impuls') || url.includes('openleermateriaal'))) isValidSource = true;
                       }
 
                       if (isValidSource) {
@@ -373,7 +367,8 @@ async function startServer() {
                   status: "pending",
                   matchScore: 0, // Will be overridden if goal is provided
                   thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
-                  viewCount: item.statistics.viewCount
+                  viewCount: item.statistics.viewCount,
+                  sourceType: "youtube"
                });
              }
            }

@@ -45,7 +45,7 @@ export const VIDEO_SOURCES: VideoSource[] = [
     name: "Openleermateriaal",
     type: "open-leermateriaal",
     provider: "web",
-    enabled: true,
+    enabled: false,
     reliabilityWeight: 0.8
   },
   {
@@ -53,7 +53,7 @@ export const VIDEO_SOURCES: VideoSource[] = [
     name: "Impuls Open Leermateriaal",
     type: "open-leermateriaal",
     provider: "web",
-    enabled: true,
+    enabled: false,
     reliabilityWeight: 0.8
   },
   {

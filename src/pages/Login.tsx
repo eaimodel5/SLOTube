@@ -58,32 +58,13 @@ export default function Login() {
   const [adminError, setAdminError] = useState('');
   const [showFakeHack, setShowFakeHack] = useState(false);
 
-  const [clickCount, setClickCount] = useState({ count: 0, time: 0 });
-  const [buttonDisabledFake, setButtonDisabledFake] = useState(false);
-
   const handleLogin = (selectedRole: 'docent' | 'admin' | 'databaas') => {
     if (selectedRole === 'databaas') {
       setShowCodeModal(true);
       return;
     }
     if (selectedRole === 'admin') {
-      const now = Date.now();
-      if (now - clickCount.time > 3000) {
-        // Reset if more than 3 seconds since last click
-        setClickCount({ count: 1, time: now });
-        setButtonDisabledFake(true);
-      } else {
-        const newCount = clickCount.count + 1;
-        if (newCount >= 3) {
-           // Triple click achieved!
-           setShowAdminModal(true);
-           setClickCount({ count: 0, time: 0 });
-           setButtonDisabledFake(false);
-        } else {
-           setClickCount({ count: newCount, time: clickCount.time });
-           setButtonDisabledFake(true);
-        }
-      }
+      setShowAdminModal(true);
       return;
     }
     setLoadingRole(selectedRole);
@@ -134,6 +115,21 @@ export default function Login() {
     setAdminError('');
 
     try {
+      const adminEmailLower = adminEmail.trim().toLowerCase();
+
+      // Check external admins collection
+      const adminsRef = collection(db, 'admins');
+      const q = query(adminsRef, where('email', '==', adminEmailLower), where('password', '==', adminPassword));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // External admin validated
+        login('admin');
+        navigate('/admin');
+        return;
+      }
+
+      // Check fallback system admin
       const adminDocRef = doc(db, 'system_config', 'admin_credentials');
       let adminDoc = await getDoc(adminDocRef);
 
@@ -231,8 +227,6 @@ export default function Login() {
               className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
                 loadingRole === 'admin' 
                   ? 'border-zinc-500 bg-zinc-50' 
-                  : buttonDisabledFake
-                  ? 'border-zinc-200 bg-zinc-50 opacity-40 cursor-pointer pointer-events-auto'
                   : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
               }`}
             >

@@ -22,6 +22,12 @@ export default function AdminDashboard() {
   const [newCodeValue, setNewCodeValue] = useState('');
   const [isAddingCode, setIsAddingCode] = useState(false);
 
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
   const renderThumbnail = (item: any) => {
     const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
     const thumbUrl = item.thumbnailUrl || item.thumbnail;
@@ -107,6 +113,22 @@ export default function AdminDashboard() {
     fetchDatabaasCodes();
   }, [isAddingCode]);
 
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'admins'));
+        const adminList: any[] = [];
+        snap.forEach(d => {
+          adminList.push({ id: d.id, ...d.data() });
+        });
+        setAdmins(adminList);
+      } catch (e) {
+        console.error("Error fetching admins", e);
+      }
+    };
+    fetchAdmins();
+  }, [isAddingAdmin]);
+
   const handleAddDatabaasCode = async (e: any) => {
     e.preventDefault();
     if (!newCodeName || !newCodeValue) return;
@@ -124,6 +146,28 @@ export default function AdminDashboard() {
       alert("Error opslaan code");
     } finally {
       setIsAddingCode(false);
+    }
+  };
+
+  const handleAddAdmin = async (e: any) => {
+    e.preventDefault();
+    if (!newAdminEmail || !newAdminPassword || !newAdminName) return;
+    setIsAddingAdmin(true);
+    try {
+      await setDoc(doc(collection(db, "admins")), {
+        email: newAdminEmail.trim().toLowerCase(),
+        password: newAdminPassword,
+        name: newAdminName,
+        createdAt: serverTimestamp()
+      });
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+      setNewAdminName('');
+    } catch (error) {
+      console.error(error);
+      alert("Error opslaan beheerder");
+    } finally {
+      setIsAddingAdmin(false);
     }
   };
 
@@ -302,6 +346,7 @@ export default function AdminDashboard() {
                        }}
                      >
                        <option value="">-- Doelgroep (SLO) --</option>
+                       <option value="algemeen">Algemeen</option>
                        <option value="po groep 1-2">PO groep 1-2</option>
                        <option value="po groep 3-4">PO groep 3-4</option>
                        <option value="po groep 5-6">PO groep 5-6</option>
@@ -551,6 +596,78 @@ export default function AdminDashboard() {
                             <div className="text-xs font-mono font-medium text-zinc-500 mt-0.5 truncate">{c.code}</div>
                           </div>
                           <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0"></div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Admins Management */}
+            <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden flex flex-col mt-6">
+              <div className="px-6 py-5 border-b border-zinc-100 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center">
+                   <UserPlus className="w-4 h-4 text-blue-600" />
+                </div>
+                <h2 className="font-semibold text-zinc-900">Beheerders</h2>
+              </div>
+              
+              <div className="p-6 bg-zinc-50/30 flex-1">
+                <form onSubmit={handleAddAdmin} className="mb-6 space-y-3">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2">Beheerder Toevoegen</p>
+                  <div>
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="Naam (bijv. EAI Admin)" 
+                      value={newAdminName}
+                      onChange={e => setNewAdminName(e.target.value)}
+                      className="w-full px-4 py-2 border border-zinc-200 rounded-lg text-sm text-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-zinc-400"
+                    />
+                  </div>
+                  <div>
+                    <input 
+                      required
+                      type="email" 
+                      placeholder="E-mailadres" 
+                      value={newAdminEmail}
+                      onChange={e => setNewAdminEmail(e.target.value)}
+                      className="w-full px-4 py-2 border border-zinc-200 rounded-lg text-sm text-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-zinc-400"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="Nieuw wachtwoord" 
+                      value={newAdminPassword}
+                      onChange={e => setNewAdminPassword(e.target.value)}
+                      className="flex-1 min-w-0 px-4 py-2 border border-zinc-200 rounded-lg text-sm text-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-zinc-400"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isAddingAdmin}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors shrink-0 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" /> Aanmaken
+                    </button>
+                  </div>
+                </form>
+
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Actieve Beheerders ({admins.length})</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {admins.length === 0 ? (
+                      <p className="text-sm text-zinc-500 italic p-4 text-center bg-white border border-zinc-100 rounded-xl">Geen externe beheerders gevonden.</p>
+                    ) : (
+                      admins.map(a => (
+                        <div key={a.id} className="flex items-center justify-between bg-white px-4 py-3 border border-zinc-200 hover:border-blue-200 rounded-xl shadow-sm transition-colors group">
+                          <div className="min-w-0 pr-4">
+                            <div className="text-sm font-semibold text-zinc-900 group-hover:text-blue-700 transition-colors truncate">{a.name}</div>
+                            <div className="text-xs font-mono font-medium text-zinc-500 mt-0.5 truncate">{a.email}</div>
+                          </div>
+                          <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0"></div>
                         </div>
                       ))
                     )}

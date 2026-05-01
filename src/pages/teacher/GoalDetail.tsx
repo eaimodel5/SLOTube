@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Globe, ChevronDown, ChevronUp, FileText, ChevronRight } from 'lucide-react';
+import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Globe, ChevronDown, ChevronUp, FileText, ChevronRight, Sparkles } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createPendingVideo } from '../../lib/firebase/videoRepository';
@@ -111,8 +111,9 @@ export default function GoalDetail() {
         const found = data.find(g => g.id === id);
         if (found) {
           setGoal(found);
-          // Pre-fill the search query with the goal domain + subject to give them a good default
-          setSearchQuery(`${found.subject} ${found.domain} ${found.sentence.split(' ').slice(0, 5).join(' ')}`);
+          // Pre-fill the search query with a more concise term to yield better YouTube results
+          const keywords = found.sentence.replace(/De leerlingen leren /ig, '').split(' ').slice(0, 4).join(' ');
+          setSearchQuery(`${found.subject} ${keywords}`);
         }
       });
       
@@ -171,7 +172,7 @@ export default function GoalDetail() {
 
       const bodyData = isGenericUrl 
         ? { url: searchQuery, goal: goal }
-        : { queries: effectiveQueries, maxResultsPerQuery: 5, goal: goal };
+        : { queries: effectiveQueries, maxResultsPerQuery: 16, goal: goal };
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -229,8 +230,8 @@ export default function GoalDetail() {
       });
       const data = await resp.json();
       if (resp.ok) {
-        // Alleen suggesties van >= 45 tonen
-        const filtered = (data.results || []).filter((r: any) => (r.matchScore || 0) >= 45);
+        // Alleen suggesties van >= 5 tonen
+        const filtered = (data.results || []).filter((r: any) => (r.matchScore || 0) >= 5);
         setDiscoveryCandidates(filtered);
       } else {
         setStatusMsg({ type: 'error', text: data.error || "Mislukt om suggesties te zoeken." });
@@ -347,7 +348,7 @@ export default function GoalDetail() {
         </button>
 
         {isGoedgekeurdExpanded && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4">
             {videos.map((video) => {
               const badge = getSourceBadge(video.provider, video.sourceName);
               const assessed = video.assessedGoals?.find(g => g.goalId === id);
@@ -358,13 +359,13 @@ export default function GoalDetail() {
                   className="flex flex-col cursor-pointer group"
                 >
                   {/* Thumbnail */}
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-3">
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-2 sm:mb-3">
                     {renderThumbnail(video)}
                     <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                      {badge.icon.type === PlayCircle ? <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" /> : <Globe className="w-10 h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />}
+                      {badge.icon.type === PlayCircle ? <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" /> : <Globe className="w-8 h-8 sm:w-10 sm:h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />}
                     </div>
                     {video.duration && video.duration !== 'Web/Bron' && (
-                      <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                      <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
                         {video.duration}
                       </div>
                     )}
@@ -373,24 +374,24 @@ export default function GoalDetail() {
                   {/* Data */}
                   <div className="flex flex-col">
                     <div className="flex items-start justify-between gap-4 mb-1">
-                      <h3 className="text-base font-medium text-zinc-900 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2 line-clamp-2">{video.title}</h3>
+                      <h3 className="text-xs sm:text-sm font-medium text-zinc-900 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2 line-clamp-2">{video.title}</h3>
                     </div>
                     
-                    <div className="mt-1 flex items-center gap-2 text-sm text-zinc-500 truncate">
-                      <span className="flex items-center gap-1.5 font-medium text-zinc-600">
+                    <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-zinc-500 truncate">
+                      <span className="flex items-center gap-1 sm:gap-1.5 font-medium text-zinc-600">
                         {badge.label}
                       </span>
-                      <span>•</span>
+                      <span className="hidden sm:inline">•</span>
                       <span className="truncate">{video.origin === 'manual' ? 'Handmatig' : 'Automatische match'}</span>
                     </div>
 
-                    <div className="mt-2 flex items-center gap-3">
-                      <span className="inline-flex items-center text-emerald-600 text-xs font-medium">
-                        <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                    <div className="mt-1 sm:mt-2 flex items-center gap-2 sm:gap-3">
+                      <span className="inline-flex items-center text-emerald-600 text-[9px] sm:text-xs font-medium">
+                        <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                         Goedgekeurd
                       </span>
                       {assessed && (
-                        <span className="text-xs text-zinc-500 font-medium">
+                        <span className="text-[9px] sm:text-xs text-zinc-500 font-medium">
                           {assessed.matchScore}% match
                         </span>
                       )}
@@ -430,62 +431,79 @@ export default function GoalDetail() {
             Vind direct nieuw materiaal voor dit doel. Gebruik de automatische zoeker over alle beschikbare bronnen, of voeg handmatig een video of artikel toe via een link.
           </p>
           
-          <div className="flex flex-col md:flex-row gap-6 mb-8 border-b border-zinc-200 pb-8">
-            <button 
-              onClick={handleDiscovery}
-              disabled={isDiscovering}
-              className="px-6 py-3.5 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
-            >
-              {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              Genereer automatisch 12 suggesties
-            </button>
-          </div>
-
-          <div className="relative">
-            <h3 className="text-sm font-medium text-zinc-900 mb-3">Of zoek handmatig met een term of link:</h3>
-            <form 
-              onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
-              className="flex flex-col sm:flex-row gap-3"
-            >
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Zoekterm of plak een link (bijv. Wikiwijs of YouTube)" 
-                  className="w-full pl-11 pr-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-900"
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            {/* AI Generator */}
+            <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <h3 className="font-semibold text-purple-900">Slimme Suggesties (AI)</h3>
               </div>
-              <div className="w-full sm:w-48 shrink-0">
-                 <select
-                   className="w-full px-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-700"
-                   onChange={(e) => {
-                     if(e.target.value) {
-                        setSearchQuery(prev => prev.trim() + " " + e.target.value);
-                     }
-                   }}
-                 >
-                   <option value="">-- Doelgroep (SLO) --</option>
-                   <option value="po groep 1-2">PO groep 1-2</option>
-                   <option value="po groep 3-4">PO groep 3-4</option>
-                   <option value="po groep 5-6">PO groep 5-6</option>
-                   <option value="po groep 7-8">PO groep 7-8</option>
-                   <option value="vo onderbouw">VO Onderbouw</option>
-                   <option value="vmbo">VMBO</option>
-                   <option value="havo vwo">HAVO / VWO</option>
-                   <option value="speciaal onderwijs">Speciaal Onderwijs</option>
-                 </select>
-              </div>
+              <p className="text-sm text-purple-700/80 mb-5">
+                Laat de AI automatisch het beste lesmateriaal bij dit kerndoel zoeken op internet en platforms.
+              </p>
               <button 
-                type="submit"
-                disabled={isSearching || !searchQuery}
-                className="w-full sm:w-auto px-6 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-sm shrink-0"
+                onClick={handleDiscovery}
+                disabled={isDiscovering}
+                className="w-full py-3 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
-                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                Zoeken
+                {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                12 suggesties genereren
               </button>
-            </form>
+            </div>
+
+            {/* Manual Search */}
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="w-5 h-5 text-zinc-600" />
+                <h3 className="font-semibold text-zinc-900">Zelf zoeken</h3>
+              </div>
+              <p className="text-sm text-zinc-500 mb-5">
+                Zoek je iets specifieks? Typ een zoekterm in of plak een link van YouTube / Wikiwijs.
+              </p>
+              <form 
+                onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
+                className="flex flex-col gap-3"
+              >
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Zoekterm of link..." 
+                    className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-900 shadow-sm"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <select
+                    className="flex-1 px-3 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-700 shadow-sm"
+                    onChange={(e) => {
+                      if(e.target.value) {
+                         setSearchQuery(prev => prev.trim() + " " + e.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">Alle doelgroepen (optioneel)</option>
+                    <option value="algemeen">Algemeen</option>
+                    <option value="po groep 1-2">PO groep 1-2</option>
+                    <option value="po groep 3-4">PO groep 3-4</option>
+                    <option value="po groep 5-6">PO groep 5-6</option>
+                    <option value="po groep 7-8">PO groep 7-8</option>
+                    <option value="vo onderbouw">VO Onderbouw</option>
+                    <option value="vmbo">VMBO</option>
+                    <option value="havo vwo">HAVO / VWO</option>
+                    <option value="speciaal onderwijs">Speciaal Onderwijs</option>
+                  </select>
+                  <button 
+                    type="submit"
+                    disabled={isSearching || !searchQuery}
+                    className="sm:w-32 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
+                  >
+                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Zoeken'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
 
@@ -507,31 +525,31 @@ export default function GoalDetail() {
                   const badge = getSourceBadge(candidate.provider, candidate.sourceName);
                   
                   return (
-                    <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
+                    <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
                       {/* Thumbnail */}
-                      <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
+                      <div className="relative w-28 sm:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
                         {renderThumbnail(candidate)}
                         {candidate.duration && candidate.duration !== 'Web/Bron' && (
-                          <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                          <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
                             {candidate.duration}
                           </div>
                         )}
                       </div>
                       {/* Data */}
                       <div className="flex flex-col flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-medium border text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                          <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded font-medium border text-[10px] sm:text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
                             {badge.icon}
                             {badge.label}
                           </span>
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                          <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
                             {candidate.matchScore}% - {sLabel.label}
                           </span>
                         </div>
                         
-                        <h4 className="text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
+                        <h4 className="text-sm sm:text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
                         
-                        <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
+                        <div className="hidden sm:block text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
                           <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
                           <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
                           {candidate.matchEvidence && candidate.matchEvidence.length > 0 && (
@@ -543,12 +561,13 @@ export default function GoalDetail() {
                           )}
                         </div>
                         
-                        <div className="mt-2 self-end">
+                        <div className="mt-auto sm:mt-2 self-end">
                           <button 
                             onClick={() => handleSendToReview(candidate)}
-                            className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
+                            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-zinc-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
                           >
-                            Ter beoordeling insturen
+                            <span className="hidden sm:inline">Ter beoordeling insturen</span>
+                            <span className="sm:hidden">Beoordelen</span>
                           </button>
                         </div>
                       </div>
@@ -591,51 +610,53 @@ export default function GoalDetail() {
                     const badge = getSourceBadge(candidate.provider, candidate.sourceName);
                     
                     return (
-                      <div key={idx} className="flex flex-col md:flex-row gap-6 p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
+                      <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
                         {/* Thumbnail */}
-                        <div className="relative w-full md:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
+                        <div className="relative w-28 sm:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
                           {renderThumbnail(candidate)}
                           {candidate.duration && candidate.duration !== 'Web/Bron' && (
-                            <div className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+                            <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
                               {candidate.duration}
                             </div>
                           )}
                         </div>
                         {/* Data */}
                         <div className="flex flex-col flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-medium border text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+                            <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded font-medium border text-[10px] sm:text-xs ${badge.bg} ${badge.text} ${badge.border}`}>
                               {badge.icon}
                               {badge.label}
                             </span>
                             {candidate.matchScore > 0 && (
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                              <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
                                 {candidate.matchScore}% - {sLabel.label}
                               </span>
                             )}
                           </div>
                           
-                          <h4 className="text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
+                          <h4 className="text-sm sm:text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
                           
                           {candidate.matchReason && (
-                            <div className="text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
+                            <div className="hidden sm:block text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
                               <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
                               <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
                             </div>
                           )}
                           
-                          <div className="mt-auto pt-4 self-end flex gap-3">
+                          <div className="mt-auto pt-2 self-end flex gap-2">
                             <button 
                               onClick={() => window.open(candidate.sourceUrl || `https://youtube.com/watch?v=${candidate.videoId}`, '_blank')}
-                              className="px-4 py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg text-sm font-medium hover:bg-zinc-50 transition-colors"
+                              className="px-2 sm:px-4 py-1.5 sm:py-2 bg-white border border-zinc-200 text-zinc-700 rounded-lg text-xs sm:text-sm font-medium hover:bg-zinc-50 transition-colors"
                             >
-                              Bekijk bron
+                              <span className="hidden sm:inline">Bekijk bron</span>
+                              <span className="sm:hidden">Bron</span>
                             </button>
                             <button 
                               onClick={() => handleSendToReview(candidate)}
-                              className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
+                              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-zinc-900 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-zinc-800 transition-colors shadow-sm"
                             >
-                              Ter beoordeling insturen
+                              <span className="hidden sm:inline">Ter beoordeling insturen</span>
+                              <span className="sm:hidden">Beoordelen</span>
                             </button>
                           </div>
                         </div>
