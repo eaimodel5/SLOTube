@@ -8,7 +8,7 @@ service cloud.firestore {
     
     // Primitive Definition
     function isValidId(id) { 
-        return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+        return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); 
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
@@ -66,7 +66,7 @@ service cloud.firestore {
                       'createdAt', 'updatedAt', 'reviewedAt', 'reviewedBy', 'rejectReason',
                       'assessedGoals', 'addedAt', 'addedBy', 'sourceType', 'provider', 'videoId', 'title',
                       'channelTitle', 'description', 'duration', 'publishedAt', 'thumbnailUrl',
-                      'sourceId', 'sourceName', 'sourceUrl', 'canonicalUrl', 'thumbnailStatus', 'goalId'
+                      'sourceId', 'sourceName', 'sourceUrl', 'canonicalUrl', 'thumbnailStatus', 'goalId', 'origin', 'id'
                     ]);
                     
       allow delete: if isAllowed();

@@ -247,7 +247,8 @@ async function startServer() {
                           duration: "Web/Bron",
                           publishedAt: item.timestamp,
                           status: "pending",
-                          matchScore: 0,
+                           origin: "web_search",
+                           matchScore: 0,
                           thumbnailUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/512px-Wikipedia-logo-v2.svg.png",
                           viewCount: "-",
                           sourceType: "website"
@@ -318,6 +319,7 @@ async function startServer() {
                                 channelTitle: `${origin} Bron`,
                                 publishedAt: new Date().toISOString(),
                                 status: "pending",
+                                origin: "web_search",
                                 viewCount: "-",
                                 sourceType: "website"
                             });
@@ -365,7 +367,8 @@ async function startServer() {
                   duration: formatISO8601Duration(item.contentDetails.duration),
                   publishedAt: item.snippet.publishedAt,
                   status: "pending",
-                  matchScore: 0, // Will be overridden if goal is provided
+                   origin: "youtube_search",
+                   matchScore: 0, // Will be overridden if goal is provided
                   thumbnailUrl: item.snippet.thumbnails?.maxres?.url || item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
                   viewCount: item.statistics.viewCount,
                   sourceType: "youtube"
@@ -376,6 +379,15 @@ async function startServer() {
       }
 
       let results = Array.from(allVideos.values());
+
+      results = results.map(video => {
+         const sourceUrl = video.videoId.startsWith('http') ? video.videoId : `https://youtube.com/watch?v=${video.videoId}`;
+         return {
+            ...video,
+            sourceUrl,
+            canonicalUrl: sourceUrl
+         };
+      });
       
       if (goal) {
           results = results.map(video => {
@@ -391,7 +403,7 @@ async function startServer() {
                   publishedAt: video.publishedAt
               };
               const match = matchVideoToGoal(raw, goal);
-              return { ...video, matchScore: match.score, matchReason: match.reason, matchEvidence: match.evidence };
+              return { ...video, sourceUrl: raw.sourceUrl, canonicalUrl: raw.sourceUrl, matchScore: match.score, matchReason: match.reason, matchEvidence: match.evidence };
           });
       }
       

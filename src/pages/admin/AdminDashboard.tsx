@@ -229,8 +229,10 @@ export default function AdminDashboard() {
 
   const saveToDatabase = async (video: any) => {
     try {
-      const docRef = doc(db, "videos", video.videoId);
+      const docId = video.id || video.videoId;
+      const docRef = doc(db, "videos", docId);
       await setDoc(docRef, {
+        id: docId,
         videoId: video.videoId,
         title: video.title,
         channelTitle: video.channelTitle,
@@ -239,10 +241,12 @@ export default function AdminDashboard() {
         publishedAt: video.publishedAt || new Date().toISOString(),
         thumbnailUrl: video.thumbnailUrl || "",
         status: "pending",
+        origin: video.origin || "manual",
         addedAt: serverTimestamp(),
         addedBy: "admin", 
         matchScore: video.matchScore || 0,
-        sourceType: video.sourceType || "youtube"
+        sourceType: video.sourceType || "youtube",
+        updatedAt: serverTimestamp()
       }, { merge: true });
       
       setSavedCount(c => c + 1);

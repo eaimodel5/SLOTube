@@ -38,6 +38,8 @@ export async function createPendingVideo(candidate: VideoCandidate, goalId: stri
 
   await setDoc(docRef, {
     ...candidate,
+    id: candidate.id,
+    origin: candidate.origin || "discovery",
     goalId,
     status: "pending",
     createdAt: serverTimestamp(),
