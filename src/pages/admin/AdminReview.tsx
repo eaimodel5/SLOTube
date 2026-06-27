@@ -3,7 +3,8 @@ import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Loader2, Video, Bot, CheckCircle, Search, ThumbsUp, XCircle, Database, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PasswordModal } from '../../components/PasswordModal';
+
+import Select from 'react-select';
 
 interface Goal {
   id: string;
@@ -16,7 +17,6 @@ interface Goal {
 }
 
 export default function AdminReview() {
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [pendingVideos, setPendingVideos] = useState<any[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function AdminReview() {
   const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   
   const [isAssessing, setIsAssessing] = useState(false);
-  const [assessment, setAssessment] = useState<{score: number, feedback: string} | null>(null);
+  const [assessment, setAssessment] = useState<{score: number, feedback: string, fullAssessment?: any} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
   const navigate = useNavigate();
@@ -40,12 +40,9 @@ export default function AdminReview() {
     // Haal queue (pending videos) uit de database
     const fetchPending = async () => {
       try {
-        const q = query(collection(db, "videos"), where("status", "==", "pending"));
-        const snap = await getDocs(q);
-        const vids: any[] = [];
-        snap.forEach(d => {
-          vids.push({ ...d.data(), firestoreId: d.id });
-        });
+        const { getPendingVideos } = await import('../../lib/firebase/videoRepository');
+        const vids = await getPendingVideos();
+        // If there's a link, pre-select the goalId
         setPendingVideos(vids);
       } catch(e) {
         console.error(e);
@@ -59,11 +56,6 @@ export default function AdminReview() {
   const handleAssessAI = async () => {
     if (!selectedVideo || !selectedGoalId) return;
     
-    if (sessionStorage.getItem('eai_auth') !== 'true') {
-      setShowPasswordModal(true);
-      return;
-    }
-
     const goal = goals.find(g => g.id === selectedGoalId);
     if (!goal) return;
 
@@ -102,36 +94,56 @@ export default function AdminReview() {
     if (!selectedVideo) return;
     setIsSaving(true);
     try {
-      const ref = doc(db, "videos", selectedVideo.id || selectedVideo.firestoreId || selectedVideo.videoId);
-      
-      const payload: any = { status: decision };
+      const { setDoc, updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
       
       const currentUser = sessionStorage.getItem('databaas_name') || 'admin';
+      const finalGoalId = selectedGoalId || selectedVideo.link?.goalId;
       
-      if (decision === 'approved') {
-        payload.reviewedAt = new Date().toISOString();
-        payload.reviewedBy = currentUser;
-        payload.updatedAt = new Date().toISOString();
-        
-        if (assessment && selectedGoalId) {
-          payload.assessedGoals = arrayUnion({
-            goalId: selectedGoalId,
-            matchScore: assessment.score,
-            aiFeedback: assessment.feedback,
-            assessedAt: new Date().toISOString()
-          });
-        }
-      } else if (decision === 'rejected') {
-        payload.reviewedAt = new Date().toISOString();
-        payload.reviewedBy = currentUser;
-        payload.rejectReason = "Handmatig afgekeurd in review";
-        payload.updatedAt = new Date().toISOString();
+      if (!finalGoalId && decision === 'approved') {
+        alert("Je moet een kerndoel kiezen om goed te keuren.");
+        setIsSaving(false);
+        return;
       }
-
-      await updateDoc(ref, payload);
+      
+      const videoId = selectedVideo.id || selectedVideo.firestoreId || selectedVideo.videoId;
+      
+      if (finalGoalId) {
+        // We have a goalId, update or create video_goal_links
+        const linkId = selectedVideo.link?.id || `${videoId}_${finalGoalId}`;
+        const linkRef = doc(db, "video_goal_links", linkId);
+        
+        await setDoc(linkRef, {
+          id: linkId,
+          videoId: videoId,
+          goalId: finalGoalId,
+          status: decision,
+          reviewedAt: serverTimestamp(),
+          reviewedBy: currentUser,
+          updatedAt: serverTimestamp(),
+          ...(decision === 'approved' && assessment ? {
+            matchScore: assessment.score,
+            sloAlignment: assessment.fullAssessment || null
+          } : {}),
+          ...(decision === 'rejected' ? {
+            rejectReason: "Handmatig afgekeurd in review"
+          } : {})
+        }, { merge: true });
+      }
+      
+      // Also update the video document itself if it was standalone pending
+      if (selectedVideo.status === 'pending') {
+         await updateDoc(doc(db, "videos", videoId), {
+           status: decision === 'approved' ? 'reviewed' : 'rejected',
+           updatedAt: serverTimestamp()
+         });
+      }
       
       // Remove from visual list
-      setPendingVideos(prev => prev.filter(v => (v.id || v.videoId) !== (selectedVideo.id || selectedVideo.videoId)));
+      setPendingVideos(prev => prev.filter(v => 
+        (v.link?.id && selectedVideo.link?.id && v.link.id === selectedVideo.link.id) || 
+        (!v.link && v.id === selectedVideo.id)
+      ));
+      
       setSelectedVideo(null);
       setAssessment(null);
       setSelectedGoalId('');
@@ -209,7 +221,7 @@ export default function AdminReview() {
                   onClick={() => {
                     setSelectedVideo(video); 
                     setAssessment(null);
-                    setSelectedGoalId('');
+                    setSelectedGoalId(video.link?.goalId || '');
                   }}
                 >
                   <div className="w-20 h-14 bg-zinc-100 rounded-lg overflow-hidden relative shrink-0 border border-zinc-200 shadow-sm">
@@ -220,8 +232,13 @@ export default function AdminReview() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className={`text-sm font-semibold line-clamp-2 ${selectedVideo?.videoId === video.videoId ? 'text-blue-700' : 'text-zinc-900'}`}>{video.title}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500 mt-1 truncate font-medium">{video.channelTitle}</div>
+                    <div className={`text-sm font-semibold mb-1 line-clamp-2 ${selectedVideo?.videoId === video.videoId ? 'text-blue-700' : 'text-zinc-900'}`}>{video.title}</div>
+                    <div className="flex items-center gap-2">
+                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${video.origin === 'manual' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                         {video.origin === 'manual' ? 'Handmatig' : 'Bot'}
+                       </span>
+                       <div className="text-[10px] uppercase tracking-wider text-zinc-500 truncate font-medium">{video.channelTitle}</div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -316,16 +333,43 @@ export default function AdminReview() {
                       <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-900 border border-zinc-200">1</div>
                       <h3 className="text-sm font-bold text-zinc-900">Kies het SLO kerndoel</h3>
                     </div>
-                    <select 
-                      value={selectedGoalId} 
-                      onChange={e => setSelectedGoalId(e.target.value)}
-                      className="w-full px-4 py-3.5 border border-zinc-200 rounded-xl text-sm bg-zinc-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-900 text-zinc-900 transition-colors shadow-sm"
-                    >
-                      <option value="">-- Selecteer het best passende leerdoel --</option>
-                      {goals.map(g => (
-                        <option key={g.id} value={g.id}>{g.id}: {g.subject} - {g.sentence?.substring(0, 90)}...</option>
-                      ))}
-                    </select>
+                    <Select 
+                      value={goals.map(g => ({ value: g.id, label: `${g.id}: ${g.subject} - ${g.sentence}` })).find(o => o.value === selectedGoalId) || null} 
+                      onChange={(option: any) => setSelectedGoalId(option?.value || '')}
+                      options={goals.map(g => ({ value: g.id, label: `${g.id}: ${g.subject} - ${g.sentence}` }))}
+                      placeholder="-- Selecteer het best passende leerdoel of tag --"
+                      isSearchable
+                      menuPosition="fixed"
+                      styles={{
+                        control: (baseStyles, state) => ({
+                          ...baseStyles,
+                          borderColor: state.isFocused ? '#18181b' : '#e4e4e7',
+                          borderRadius: '0.75rem',
+                          padding: '0.25rem',
+                          backgroundColor: state.isFocused ? '#ffffff' : '#fafafa',
+                          boxShadow: state.isFocused ? '0 0 0 2px rgba(24, 24, 27, 0.2)' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                          '&:hover': {
+                            borderColor: state.isFocused ? '#18181b' : '#d4d4d8'
+                          }
+                        }),
+                        option: (baseStyles, state) => ({
+                          ...baseStyles,
+                          backgroundColor: state.isSelected ? '#18181b' : state.isFocused ? '#f4f4f5' : '#ffffff',
+                          color: state.isSelected ? '#ffffff' : '#18181b',
+                          cursor: 'pointer',
+                          padding: '0.75rem 1rem',
+                        }),
+                        menu: (baseStyles) => ({
+                          ...baseStyles,
+                          borderRadius: '0.75rem',
+                          overflow: 'hidden',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                          border: '1px solid #e4e4e7',
+                          zIndex: 9999
+                        }),
+                        menuPortal: base => ({ ...base, zIndex: 9999 })
+                      }}
+                    />
                   </div>
 
                   {/* Step 2: AI */}
@@ -405,14 +449,7 @@ export default function AdminReview() {
         </div>
       </div>
 
-      <PasswordModal 
-        isOpen={showPasswordModal}
-        onSuccess={() => {
-          setShowPasswordModal(false);
-          handleAssessAI();
-        }}
-        onClose={() => setShowPasswordModal(false)}
-      />
+
     </div>
   );
 }

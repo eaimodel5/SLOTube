@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { PlayCircle, ChevronRight } from 'lucide-react';
+import { Tile } from '../components/ui/Tile';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -163,83 +164,38 @@ export default function Login() {
     <div className="min-h-[100dvh] w-full max-w-full bg-zinc-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden overflow-x-hidden">
       
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4">
-        <div className="flex justify-center mb-6">
-           <div className="w-14 h-14 bg-black rounded-xl shadow-[0_0_15px_rgba(0,255,0,0.2)] border border-[#0f0]/50 flex items-center justify-center">
-             <PlayCircle className="w-7 h-7 text-[#0f0] animate-pulse" />
-           </div>
-        </div>
         <h2 className="text-center text-3xl tracking-tight text-zinc-900 flex justify-center items-center gap-1.5 font-sans">
           <span className="font-bold">SLO</span><span className="bg-black text-[#0f0] font-mono font-bold px-2 py-0.5 rounded-lg border border-[#0f0]/30 shadow-[0_0_10px_rgba(0,255,0,0.1)] tracking-widest text-lg">TUBE</span>
         </h2>
-        <p className="mt-4 text-center text-sm text-zinc-600 leading-relaxed max-w-xs mx-auto">
-          <span className="font-semibold block mb-1 text-zinc-800">Lesmateriaal bij SLO-kerndoelen</span>
-          Zoek, beoordeel en deel video’s en open leermateriaal per kerndoel.
-        </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white py-8 px-4 border border-zinc-200 sm:rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] sm:px-10">
           <div className="space-y-3">
             
-            <button
+            <Tile
               onClick={() => handleLogin('docent')}
-              disabled={loadingRole !== null}
-              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
-                loadingRole === 'docent' 
-                  ? 'border-zinc-500 bg-zinc-50' 
-                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
-              }`}
-            >
-              <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Docentenomgeving</h3>
-                <p className="text-sm text-zinc-500 mt-1 truncate">Zoek en gebruik goedgekeurd lesmateriaal</p>
-              </div>
-              {loadingRole === 'docent' ? (
-                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
-              ) : (
-                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
-              )}
-            </button>
+              title="Docentenomgeving"
+              subtitle="Zoek en gebruik goedgekeurd lesmateriaal"
+              rightIcon={loadingRole === 'docent' ? <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div> : undefined}
+              className={loadingRole === 'docent' ? 'border-zinc-500 bg-zinc-50' : ''}
+            />
 
-            <button
+            <Tile
               onClick={() => handleLogin('databaas')}
-              disabled={loadingRole !== null}
-              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
-                loadingRole === 'databaas' 
-                  ? 'border-zinc-500 bg-zinc-50' 
-                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
-              }`}
-            >
-              <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Beoordelingsomgeving</h3>
-                <p className="text-sm text-zinc-500 mt-1 truncate">Beoordeel en valideer nieuw materiaal</p>
-              </div>
-              {loadingRole === 'databaas' && !showCodeModal ? (
-                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
-              ) : (
-                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
-              )}
-            </button>
+              title="Beoordelingsomgeving"
+              subtitle="Beoordeel en valideer nieuw materiaal"
+              rightIcon={loadingRole === 'databaas' && !showCodeModal ? <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div> : undefined}
+              className={loadingRole === 'databaas' ? 'border-zinc-500 bg-zinc-50' : ''}
+            />
 
-            <button
+            <Tile
               onClick={() => handleLogin('admin')}
-              disabled={loadingRole !== null}
-              className={`w-full group flex items-center justify-between p-5 rounded-xl transition-all border ${
-                loadingRole === 'admin' 
-                  ? 'border-zinc-500 bg-zinc-50' 
-                  : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50 bg-white shadow-sm'
-              }`}
-            >
-              <div className="text-left flex-1 min-w-0 pr-4">
-                <h3 className="text-base font-semibold text-zinc-900 group-hover:text-zinc-600 transition-colors">Beheerdersomgeving</h3>
-                <p className="text-sm text-zinc-500 mt-1 truncate">Systeeminstellingen en toegangsbeheer</p>
-              </div>
-              {loadingRole === 'admin' ? (
-                <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div>
-              ) : (
-                <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-600 transition-colors shrink-0" />
-              )}
-            </button>
+              title="Beheerdersomgeving"
+              subtitle="Systeeminstellingen en toegangsbeheer"
+              rightIcon={loadingRole === 'admin' ? <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin shrink-0"></div> : undefined}
+              className={loadingRole === 'admin' ? 'border-zinc-500 bg-zinc-50' : ''}
+            />
 
           </div>
 

@@ -10,6 +10,10 @@ import { runAiAssessment } from "./src/lib/matching/optionalAiMatcher";
 import { matchVideoToGoal } from "./src/lib/matching/localGoalMatcher";
 import { NormalizedSloGoal } from "./src/lib/slo/sloTypes";
 import { generateStableId, canonicalizeUrl } from "./src/lib/media/urlUtils";
+import { googleGroundedProvider } from "./src/lib/search/providers/googleGroundedProvider";
+import { tavilyProvider } from "./src/lib/search/providers/tavilyProvider";
+import { serperProvider } from "./src/lib/search/providers/serperProvider";
+import { legacyDuckDuckGoProvider } from "./src/lib/search/providers/legacyDuckDuckGoProvider";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,7 +62,14 @@ async function startServer() {
 
   // Get all goals
   app.get("/api/goals", (req, res) => {
-    res.json(flattenedGoals);
+    // Voeg de "Algemene info" tag toe acter aan
+    res.json([{
+      id: "algemeen",
+      subject: "Algemeen",
+      domain: "Algemeen Lesmateriaal",
+      sentence: "Algemene Educatieve Informatie – Niet specifiek gebonden aan een bepaald kerndoel.",
+      description: "Generiek lesmateriaal dat niet goed past binnen 1 specifiek kerndoel maar wel algemeen educatief inzetbaar is."
+    }, ...flattenedGoals]);
   });
 
   // Get raw SLO data for richer domain/subject hierarchy
@@ -421,6 +432,35 @@ async function startServer() {
     res.json([]);
   });
 
+  // Search API
+  app.post("/api/search", async (req, res) => {
+    try {
+      const params = req.body;
+      const providerName = process.env.SEARCH_PROVIDER || "google";
+      let results = [];
+      
+      try {
+        if (providerName === "tavily") {
+          results = await tavilyProvider.search(params);
+        } else if (providerName === "serper") {
+          results = await serperProvider.search(params);
+        } else if (providerName === "google") {
+          results = await googleGroundedProvider.search(params);
+        } else {
+          results = await legacyDuckDuckGoProvider.search(params);
+        }
+      } catch (providerError) {
+        console.error(`Error in search provider ${providerName}, falling back to duckduckgo:`, providerError);
+        results = await legacyDuckDuckGoProvider.search(params);
+      }
+      
+      res.json({ results });
+    } catch (error) {
+      console.error("Error executing search API:", error);
+      res.status(500).json({ error: "Failed to execute search API" });
+    }
+  });
+
   // AI Assessment API
   app.post("/api/ai/assess", async (req, res) => {
     try {
@@ -437,7 +477,7 @@ async function startServer() {
       
       res.json({
         score: assessment.score,
-        feedback: assessment.reason,
+        feedback: assessment.reasonShort,
         fullAssessment: assessment
       });
     } catch (error) {

@@ -1,22 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { NormalizedSloGoal } from "../slo/sloTypes";
-import { VideoCandidate } from "../../types";
-
-export interface AiAssessmentResult {
-  score: number;
-  advice: "approve" | "reject" | "needs_review";
-  targetGroupFit: "poor" | "acceptable" | "good";
-  sloFit: "poor" | "acceptable" | "good";
-  educationalUse: "poor" | "acceptable" | "good";
-  sourceReliability: "low" | "medium" | "high";
-  reason: string;
-  warnings: string[];
-}
+import { VideoCandidate, SloAlignment } from "../../types";
 
 export async function runAiAssessment(
   video: VideoCandidate,
   goal: NormalizedSloGoal
-): Promise<AiAssessmentResult | null> {
+): Promise<SloAlignment | null> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) return null;
 
@@ -38,8 +27,8 @@ export async function runAiAssessment(
       Kerndoelzin: ${goal.sentence}
       Omschrijving: ${goal.description}
       Actor/Doelgroep: ${goal.actor}
-      Uitwerkingen: ${goal.elaborations.join("; ")}
-      Voorbeelden: ${goal.examples.join("; ")}
+      Uitwerkingen: ${goal.elaborations?.join("; ") || "Geen specifieke uitwerkingen beschikbaar."}
+      Voorbeelden: ${goal.examples?.join("; ") || "Geen specifieke voorbeelden beschikbaar."}
       
       BRON CONTEXT:
       Titel: ${video.title}
@@ -53,24 +42,32 @@ export async function runAiAssessment(
       GEEF ANTWOORD IN DIT JSON FORMAT:
       {
         "score": number (0-100),
-        "advice": "approve" | "reject" | "needs_review",
-        "targetGroupFit": "poor" | "acceptable" | "good",
-        "sloFit": "poor" | "acceptable" | "good",
-        "educationalUse": "poor" | "acceptable" | "good",
-        "sourceReliability": "low" | "medium" | "high",
-        "reason": "korte didactische onderbouwing",
-        "warnings": ["lijst met waarschuwingen of twijfels"]
+        "confidence": "laag" | "midden" | "hoog",
+        "coveredElaborations": [
+          { "text": "korte beschrijving uitwerking", "evidence": "waarom dit gedekt is", "confidence": number }
+        ],
+        "coveredIllustrations": [
+          { "text": "korte beschrijving voorbeeld", "evidence": "waarom dit gedekt is", "confidence": number }
+        ],
+        "missingParts": ["wat ontbreekt er voor volledige dekking"],
+        "doelgroepFit": "zwak" | "voldoende" | "sterk",
+        "reasonShort": "korte didactische onderbouwing (max 2 zinnen)"
       }
     `;
 
     const result = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-pro",
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
     const text = result.text;
     if (!text) return null;
-    return JSON.parse(text) as AiAssessmentResult;
+    
+    const parsed = JSON.parse(text);
+    return {
+      goalId: goal.id,
+      ...parsed
+    } as SloAlignment;
   } catch (e) {
     console.error("AI Assessment failed:", e);
     return null;

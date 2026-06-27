@@ -1,4 +1,5 @@
 import { RawCandidate } from "./providerInterface";
+import { executeSearchViaGateway } from "../../search/searchGateway";
 import { canonicalizeUrl } from "../../media/urlUtils";
 
 export async function webSearch(
@@ -7,49 +8,25 @@ export async function webSearch(
   sourceName: string, 
   siteOperator?: string
 ): Promise<RawCandidate[]> {
-  const fullQuery = siteOperator ? `site:${siteOperator} ${query}` : query;
-  
   try {
-    const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(fullQuery)}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+    const res = await executeSearchViaGateway({
+      query,
+      includeDomains: siteOperator ? [siteOperator] : undefined,
+      limit: 5
     });
 
-    if (!ddgRes.ok) return [];
-
-    const html = await ddgRes.text();
-    const cheerio = await import('cheerio');
-    const $ = cheerio.load(html);
-    const results: RawCandidate[] = [];
-
-    $('.result').slice(0, 5).each((i, el) => {
-      const title = $(el).find('.result__title').text().trim();
-      const snippet = $(el).find('.result__snippet').text().trim();
-      let url = $(el).find('.result__url').attr('href');
-
-      if (title && url && !url.includes('duckduckgo.com/y.js')) {
-        if (url.startsWith('//')) url = 'https:' + url;
-        
-        // Handle DuckDuckGo's internal redirection if present
-        if (url.includes('uddg=')) {
-          const match = url.match(/uddg=([^&]+)/);
-          if (match) url = decodeURIComponent(match[1]);
-        }
-
-        results.push({
-          title,
-          description: snippet,
-          sourceUrl: url,
-          canonicalUrl: canonicalizeUrl(url),
-          sourceId,
-          sourceName,
-          publishedAt: new Date().toISOString()
-        });
-      }
-    });
-
-    return results;
+    return res.map(r => ({
+      title: r.title,
+      description: r.snippet,
+      sourceUrl: r.url,
+      canonicalUrl: r.canonicalUrl || canonicalizeUrl(r.url),
+      sourceId: sourceId, // preserve the caller's sourceId
+      sourceName: sourceName, // preserve the caller's sourceName
+      thumbnailUrl: r.thumbnailUrl,
+      publishedAt: new Date().toISOString()
+    }));
   } catch (e) {
-    console.error(`Web search failed for ${sourceId}:`, e);
+    console.error(`Web search via gateway failed for ${sourceId}:`, e);
     return [];
   }
 }

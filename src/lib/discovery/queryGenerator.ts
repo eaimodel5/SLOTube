@@ -49,7 +49,7 @@ export function generateQueriesForGoal(goal: NormalizedSloGoal): GeneratedQuery[
   }
 
   // Group: Uitwerkingen (Rijke SLO data)
-  const allUitwerkingen = [...goal.elaborations, ...goal.baseUitwerkingen, ...goal.hvwoUitwerkingen];
+  const allUitwerkingen = [...(goal.elaborations || []), ...(goal.baseUitwerkingen || []), ...(goal.hvwoUitwerkingen || [])];
   allUitwerkingen.slice(0, 3).forEach((u, i) => {
     queries.push({
       text: `${goal.subject} ${u}`,

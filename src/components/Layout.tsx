@@ -4,6 +4,8 @@ import { BookOpen, Search, LayoutDashboard, ShieldCheck, LogOut, HelpCircle, Men
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { Tile } from './ui/Tile';
+
 export default function Layout() {
   const { role, logout } = useAuth();
   const location = useLocation();
@@ -150,38 +152,29 @@ export default function Layout() {
                 key={item.to}
                 to={item.to}
                 end={item.to === "/teacher" || item.to === "/admin"}
-                className={({ isActive }) =>
-                  `flex items-center gap-4 px-4 py-4 rounded-xl text-base transition-colors border ${
-                    isActive 
-                      ? "bg-zinc-900 border-zinc-900 text-white font-medium" 
-                      : "bg-zinc-50 border-zinc-100 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
-                  }`
-                }
+                onClick={() => setMobileMenuOpen(false)}
+                className="block"
               >
-                <item.icon className="w-5 h-5" />
-                {item.label}
+                {({ isActive }) => (
+                  <Tile
+                    title={item.label}
+                    icon={<item.icon className="w-5 h-5" />}
+                    isActive={isActive}
+                    rightIcon={<div/>} // Hide right chevron to match simple links if desired, or keep it. Let's keep empty right icon so it matches
+                  />
+                )}
               </NavLink>
             ))}
           </nav>
           
           <div className="p-6 border-t border-zinc-100 bg-zinc-50 pb-safe">
-            <div className="text-xs font-mono uppercase tracking-widest text-zinc-400 mb-3 block">Account & Rol</div>
-            <button 
-              onClick={() => {
-                logout();
-              }}
-              className="w-full flex items-center justify-between px-4 py-4 text-sm bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors shadow-sm"
-            >
-              <div className="flex flex-col items-start gap-1">
-                <span className="font-medium text-zinc-900 text-sm">
-                  Rol wisselen / Uitloggen
-                </span>
-                <span className="text-zinc-500 text-xs">
-                  Nu ingelogd als {role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}
-                </span>
-              </div>
-              <LogOut className="w-5 h-5 text-zinc-400" />
-            </button>
+            <div className="text-[11px] font-mono uppercase tracking-widest text-zinc-400 mb-3 block">Account & Rol</div>
+            <Tile
+              title="Rol wisselen / Uitloggen"
+              subtitle={`Nu ingelogd als ${role === 'databaas' ? 'reviewer' : role === 'admin' ? 'beheerder' : 'docent'}`}
+              icon={<LogOut className="w-5 h-5 text-zinc-400" />}
+              onClick={() => logout()}
+            />
             <div className="mt-8 text-center text-[10px] font-mono leading-relaxed uppercase tracking-widest text-zinc-400">
               H. Visser EAI Analyse & Advies
             </div>

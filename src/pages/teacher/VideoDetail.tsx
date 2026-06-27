@@ -150,16 +150,16 @@ export default function VideoDetail() {
           </div>
 
           <div>
-             <h1 className="text-xl font-semibold text-zinc-900 leading-tight">
+             <h1 className="text-lg font-semibold text-zinc-900 leading-tight">
               {video ? video.title : "Video laden..."}
             </h1>
             {video && (
-              <div className="mt-2 text-sm text-zinc-500 font-medium">Kanaal / Bron: {video.channelTitle || video.sourceName}</div>
+              <div className="mt-2 text-xs text-zinc-500 font-medium">Kanaal / Bron: {video.channelTitle || video.sourceName}</div>
             )}
             
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-zinc-900 mb-2">Videobeschrijving</h3>
-              <p className="text-zinc-600 leading-relaxed text-sm whitespace-pre-wrap">
+              <h3 className="text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">Videobeschrijving</h3>
+              <p className="text-zinc-600 leading-relaxed text-xs whitespace-pre-wrap">
                 {loading ? "Laden..." : (video?.description || "Geen beschrijving beschikbaar.")}
               </p>
             </div>
@@ -179,15 +179,15 @@ export default function VideoDetail() {
                 <div className="text-sm text-zinc-500">Beoordeling laden...</div>
               ) : video?.status === 'live_preview' ? (
                 <div className="flex flex-col gap-4">
-                  <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 p-4 rounded-lg">
-                    <p className="font-semibold mb-1">Online gevonden bron</p>
+                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 p-4 rounded-lg flex flex-col gap-1">
+                    <p className="font-semibold">Online gevonden bron</p>
                     <p>Deze bron is gevonden via de geselecteerde platformen en is nog niet beoordeeld door een reviewer of beheerder.</p>
                   </div>
                   
                   <button 
                     onClick={handlePropose}
                     disabled={isProposing || proposed}
-                    className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-sm"
+                    className="w-full flex justify-center items-center gap-2 px-4 py-2 bg-zinc-900 text-white rounded-lg text-xs font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors shadow-sm"
                   >
                     {isProposing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
                     {proposed ? 'Ter beoordeling ingestuurd' : 'Ter beoordeling insturen'}
@@ -230,7 +230,7 @@ export default function VideoDetail() {
                    </div>
                 ))
               ) : (
-                <div className="text-sm text-zinc-500">
+                <div className="text-xs text-zinc-500">
                   <p>Er zijn nog geen SLO-kerndoelen gekoppeld of beoordeeld voor dit materiaal.</p>
                 </div>
               )}

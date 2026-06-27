@@ -3,11 +3,10 @@ import { Video, ShieldCheck, Search, Database, Loader2, Save, ChevronRight, Wand
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { collection, doc, setDoc, getDocs, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { PasswordModal } from '../../components/PasswordModal';
+import Select from 'react-select';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [isCrawling, setIsCrawling] = useState(false);
   const [crawlQuery, setCrawlQuery] = useState("");
   const [crawlResults, setCrawlResults] = useState<any[]>([]);
@@ -55,41 +54,50 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const snap = await getDocs(collection(db, 'videos'));
+        const snap = await getDocs(collection(db, 'video_goal_links'));
         let pending = 0;
         let approved = 0;
-        const pendingDocs: any[] = [];
-        const approvedDocs: any[] = [];
+        const pendingLinks: any[] = [];
+        const approvedLinks: any[] = [];
         
         snap.forEach(d => {
           const data = d.data();
           if (data.status === 'pending') {
             pending++;
-            pendingDocs.push({ id: d.id, ...data });
+            pendingLinks.push(data);
           }
           if (data.status === 'approved') {
             approved++;
-            approvedDocs.push({ id: d.id, ...data });
+            approvedLinks.push(data);
           }
         });
         
-        // Sort pending by newest added first, then take top 3
-        pendingDocs.sort((a, b) => {
-          const d1 = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
-          const d2 = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+        pendingLinks.sort((a, b) => {
+          const d1 = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const d2 = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
           return d2 - d1;
         });
 
-        // Top 5 approved
-        approvedDocs.sort((a, b) => {
-          const d1 = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
-          const d2 = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+        approvedLinks.sort((a, b) => {
+          const d1 = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const d2 = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
           return d2 - d1;
         });
         
-        setDbStats({ total: snap.size, pending, approved });
-        setRecentPending(pendingDocs.slice(0, 3));
-        setRecentApproved(approvedDocs.slice(0, 5));
+        // Fetch actual videos for top links
+        const topPendingLinks = pendingLinks.slice(0, 3);
+        const topApprovedLinks = approvedLinks.slice(0, 5);
+        
+        const videoSnap = await getDocs(collection(db, 'videos'));
+        const videosMap = new Map();
+        videoSnap.forEach(d => videosMap.set(d.id, { id: d.id, ...d.data() }));
+
+        const pendingDocs = topPendingLinks.map(l => ({ ...videosMap.get(l.videoId), link: l })).filter(v => v.id);
+        const approvedDocs = topApprovedLinks.map(l => ({ ...videosMap.get(l.videoId), link: l })).filter(v => v.id);
+
+        setDbStats({ total: videoSnap.size, pending, approved });
+        setRecentPending(pendingDocs);
+        setRecentApproved(approvedDocs);
       } catch (e) {
         console.error(e);
       }
@@ -192,11 +200,6 @@ export default function AdminDashboard() {
   const handleCrawl = async () => {
     if (!crawlQuery) return;
     
-    if (sessionStorage.getItem('eai_auth') !== 'true') {
-      setShowPasswordModal(true);
-      return;
-    }
-
     setIsCrawling(true);
     setCrawlResults([]);
     try {
@@ -340,26 +343,57 @@ export default function AdminDashboard() {
                       className="block w-full pl-11 pr-4 py-3 border border-zinc-200 rounded-xl text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-all"
                     />
                   </div>
-                  <div className="w-full sm:w-48 shrink-0">
-                     <select
-                       className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-shadow text-sm text-zinc-700"
-                       onChange={(e) => {
-                         if(e.target.value) {
-                            setCrawlQuery(prev => prev + " " + e.target.value);
+                  <div className="w-full sm:w-56 shrink-0 z-20">
+                     <Select
+                       placeholder="-- Doelgroep (SLO) --"
+                       isSearchable={false}
+                       options={[
+                         { value: "algemeen", label: "Algemeen" },
+                         { value: "po groep 1-2", label: "PO groep 1-2" },
+                         { value: "po groep 3-4", label: "PO groep 3-4" },
+                         { value: "po groep 5-6", label: "PO groep 5-6" },
+                         { value: "po groep 7-8", label: "PO groep 7-8" },
+                         { value: "vo onderbouw", label: "VO Onderbouw" },
+                         { value: "vmbo", label: "VMBO" },
+                         { value: "havo vwo", label: "HAVO / VWO" },
+                         { value: "speciaal onderwijs", label: "Speciaal Onderwijs" }
+                       ]}
+                       onChange={(option: any) => {
+                         if(option?.value) {
+                            setCrawlQuery(prev => prev ? prev + " " + option.value : option.value);
                          }
                        }}
-                     >
-                       <option value="">-- Doelgroep (SLO) --</option>
-                       <option value="algemeen">Algemeen</option>
-                       <option value="po groep 1-2">PO groep 1-2</option>
-                       <option value="po groep 3-4">PO groep 3-4</option>
-                       <option value="po groep 5-6">PO groep 5-6</option>
-                       <option value="po groep 7-8">PO groep 7-8</option>
-                       <option value="vo onderbouw">VO Onderbouw</option>
-                       <option value="vmbo">VMBO</option>
-                       <option value="havo vwo">HAVO / VWO</option>
-                       <option value="speciaal onderwijs">Speciaal Onderwijs</option>
-                     </select>
+                       styles={{
+                          control: (baseStyles, state) => ({
+                            ...baseStyles,
+                            borderColor: state.isFocused ? '#18181b' : '#e4e4e7',
+                            borderWidth: '1px',
+                            borderRadius: '0.75rem',
+                            padding: '0.3rem',
+                            backgroundColor: '#fafafa',
+                            boxShadow: state.isFocused ? '0 0 0 2px rgba(24, 24, 27, 0.2)' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                            '&:hover': {
+                              borderColor: state.isFocused ? '#18181b' : '#d4d4d8'
+                            }
+                          }),
+                          option: (baseStyles, state) => ({
+                            ...baseStyles,
+                            backgroundColor: state.isSelected ? '#18181b' : state.isFocused ? '#f4f4f5' : '#ffffff',
+                            color: state.isSelected ? '#ffffff' : '#18181b',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }),
+                          placeholder: (baseStyles) => ({
+                            ...baseStyles,
+                            color: '#52525b',
+                            fontSize: '0.875rem'
+                          }),
+                          singleValue: (baseStyles) => ({
+                            ...baseStyles,
+                            fontSize: '0.875rem'
+                          })
+                        }}
+                     />
                   </div>
                   <button 
                     type="submit"
@@ -685,14 +719,7 @@ export default function AdminDashboard() {
 
       </div>
 
-      <PasswordModal 
-        isOpen={showPasswordModal}
-        onSuccess={() => {
-          setShowPasswordModal(false);
-          handleCrawl();
-        }}
-        onClose={() => setShowPasswordModal(false)}
-      />
+
     </div>
   );
 }

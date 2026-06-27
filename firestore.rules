@@ -51,6 +51,10 @@ service cloud.firestore {
       allow read, write: if isAllowed();
     }
     
+    match /video_goal_links/{linkId} {
+      allow read, write: if isAllowed();
+    }
+    
     match /videos/{videoId} {
       allow read: if isAllowed();
       

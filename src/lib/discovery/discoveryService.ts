@@ -124,7 +124,10 @@ export async function runDiscoveryForGoal(
     if (options.useAi) {
         const assessment = await runAiAssessment(candidate, goal);
         if (assessment) {
-            candidate.aiAssessment = assessment;
+            candidate.sloAlignment = assessment;
+            // Also override the main score and reason so it shows up correctly in UI if AI says so
+            if (assessment.score !== undefined) candidate.matchScore = assessment.score;
+            if (assessment.reasonShort) candidate.matchReason = assessment.reasonShort;
         }
     }
 

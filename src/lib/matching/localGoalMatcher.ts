@@ -73,7 +73,7 @@ export function matchVideoToGoal(video: any, goal: NormalizedSloGoal): MatchResu
   }
 
   // 3. Match with Elaborations & Illustrations
-  const allContext = [...goal.elaborations, ...goal.baseUitwerkingen, ...goal.hvwoUitwerkingen];
+  const allContext = [...(goal.elaborations || []), ...(goal.baseUitwerkingen || []), ...(goal.hvwoUitwerkingen || [])];
   for (const item of allContext) {
     if (calculateTokenOverlap(videoFullText, item) > 0.6) {
       score += SCORING_CONFIG.WEIGHTS.ELABORATION_MATCH;

@@ -55,18 +55,18 @@ export default function GoalBrowser() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">Officiële Kerndoelen</h1>
-        <p className="text-zinc-500 mt-1">Blader door de SLO-kerndoelen gebaseerd op het curriculum en ontdek lesmateriaal.</p>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">Officiële Kerndoelen</h1>
+        <p className="text-sm text-zinc-500 mt-1">Blader door de SLO-kerndoelen gebaseerd op het curriculum en ontdek lesmateriaal.</p>
       </div>
 
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-5 w-5 text-zinc-400" />
+          <Search className="h-4 w-4 text-zinc-400" />
         </div>
         <input
           type="text"
           autoFocus
-          className="block w-full pl-10 pr-3 py-3 border border-zinc-200 rounded-xl leading-5 bg-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 sm:text-sm transition-colors"
+          className="block w-full pl-9 pr-3 py-2.5 border border-zinc-200 rounded-xl bg-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 text-xs sm:text-sm transition-colors"
           placeholder="Typ om direct te zoeken in kerndoelen, vakken of codes..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -77,8 +77,8 @@ export default function GoalBrowser() {
         {Object.entries(groupedGoals).map(([subject, subjectGoals]) => {
           const goalsList = subjectGoals as Goal[];
           return (
-          <div key={subject} className="space-y-4">
-            <h2 className="text-xl font-medium text-zinc-900 border-b border-zinc-200 pb-2">
+          <div key={subject} className="space-y-3">
+            <h2 className="text-lg font-medium text-zinc-900 border-b border-zinc-200 pb-2">
               {subject}
             </h2>
             
@@ -88,26 +88,26 @@ export default function GoalBrowser() {
                   <div 
                     key={goal.id} 
                     onClick={() => navigate(`/teacher/goals/${goal.id}`)}
-                    className="p-4 flex gap-4 items-start hover:bg-zinc-50 cursor-pointer transition-colors"
+                    className="p-3 sm:p-4 flex gap-3 items-start hover:bg-zinc-50 cursor-pointer transition-colors"
                   >
-                    <div className="w-16 flex-shrink-0 pt-0.5">
-                      <span className="inline-flex items-center justify-center px-2 py-1 bg-zinc-100 text-zinc-600 rounded text-xs font-mono font-medium">
+                    <div className="w-14 flex-shrink-0 pt-0.5">
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px] font-mono font-medium">
                         {goal.id}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-blue-600 mb-1">{goal.domain}</div>
-                      <div className="font-semibold text-zinc-900 mb-1">
+                      <div className="text-xs font-medium text-blue-600 mb-0.5">{goal.domain}</div>
+                      <div className="text-sm font-semibold text-zinc-900 mb-0.5">
                         {goal.sentence.charAt(0).toUpperCase() + goal.sentence.slice(1)}
                       </div>
                       {!isTextSimilar(goal.sentence, goal.description) && (
-                        <div className="text-sm text-zinc-500 line-clamp-2">
+                        <div className="text-xs text-zinc-500 line-clamp-2 mt-1">
                           {goal.description}
                         </div>
                       )}
                     </div>
                     <div className="flex items-center justify-center pt-2">
-                      <ChevronRight className="w-5 h-5 text-zinc-400" />
+                      <ChevronRight className="w-4 h-4 text-zinc-400" />
                     </div>
                   </div>
                 ))}
@@ -116,11 +116,11 @@ export default function GoalBrowser() {
           </div>
         )})}
         {goals.length === 0 ? (
-          <div className="p-8 text-center text-zinc-500 text-sm">
+          <div className="p-8 text-center text-zinc-500 text-xs">
             Laden...
           </div>
         ) : Object.keys(groupedGoals).length === 0 ? (
-          <div className="p-8 text-center text-zinc-500 text-sm bg-zinc-50 rounded-xl border border-dashed border-zinc-200">
+          <div className="p-8 text-center text-zinc-500 text-xs bg-zinc-50 rounded-xl border border-dashed border-zinc-200">
             Geen kerndoelen gevonden voor "{searchQuery}"
           </div>
         ) : null}

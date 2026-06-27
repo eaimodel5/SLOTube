@@ -4,7 +4,6 @@ import { PlayCircle, ShieldCheck, Clock, ShieldX, Youtube, Search, Loader2, Glob
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { createPendingVideo } from '../../lib/firebase/videoRepository';
-import { PasswordModal } from '../../components/PasswordModal';
 import { isTextSimilar } from '../../lib/textUtils';
 
 interface Goal {
@@ -34,6 +33,9 @@ interface Video {
   origin?: string;
   assessedGoals?: {goalId: string, matchScore: number}[];
   thumbnailUrl: string;
+  matchScore?: number;
+  matchReason?: string;
+  sloAlignment?: any;
 }
 
 function getSourceBadge(provider: string = '', sourceName: string = '') {
@@ -101,7 +103,6 @@ export default function GoalDetail() {
   const [discoveryCandidates, setDiscoveryCandidates] = useState<any[] | null>(null);
   const [isDiscovering, setIsDiscovering] = useState(false);
 
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   useEffect(() => {
     // 1. Fetch specific goal
@@ -120,21 +121,9 @@ export default function GoalDetail() {
     // 2. Fetch approved videos that match this goal
     const fetchVideos = async () => {
       try {
-        const q = query(
-          collection(db, "videos"),
-          where("status", "==", "approved")
-        );
-        const snap = await getDocs(q);
-        const matchedVideos: Video[] = [];
-        
-        snap.forEach(doc => {
-          const data = doc.data() as Video;
-          if (data.assessedGoals && data.assessedGoals.some(g => g.goalId === id)) {
-            matchedVideos.push(data);
-          }
-        });
-        
-        setVideos(matchedVideos);
+        const { getApprovedVideosForGoal } = await import('../../lib/firebase/videoRepository');
+        const matchedVideos = await getApprovedVideosForGoal(id as string);
+        setVideos(matchedVideos as any);
       } catch(e) {
         console.error("Error fetching firebase videos for goal", e);
       } finally {
@@ -147,11 +136,6 @@ export default function GoalDetail() {
   const handleLiveSearch = async () => {
     if (!searchQuery.trim()) return;
     
-    if (sessionStorage.getItem('eai_auth') !== 'true') {
-      setShowPasswordModal(true);
-      return;
-    }
-
     setStatusMsg(null);
     setIsSearching(true);
     setIsHandmatigExpanded(true);
@@ -205,13 +189,6 @@ export default function GoalDetail() {
 
   const handleDiscovery = async () => {
     if (!goal) return;
-    if (sessionStorage.getItem('eai_auth') !== 'true') {
-      setShowPasswordModal(true);
-      // Store that we were trying to do discovery
-      sessionStorage.setItem('pending_action', 'discovery');
-      return;
-    }
-
     setStatusMsg(null);
     setIsDiscovering(true);
     setIsSuggestiesExpanded(true);
@@ -224,7 +201,7 @@ export default function GoalDetail() {
           goal, 
           options: { 
             maxResults: 12,
-            useAi: false 
+            useAi: true 
           } 
         })
       });
@@ -279,11 +256,11 @@ export default function GoalDetail() {
               </span>
             )}
           </div>
-          <h1 className="text-xl md:text-2xl font-semibold text-zinc-900 leading-tight">
+          <h1 className="text-lg md:text-xl font-semibold text-zinc-900 leading-tight">
             {goal.sentence}
           </h1>
           {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
-            <p className="mt-4 text-zinc-600 leading-relaxed text-sm">
+            <p className="mt-3 text-zinc-600 leading-relaxed text-xs">
               {goal.description}
             </p>
           )}
@@ -292,7 +269,7 @@ export default function GoalDetail() {
             <div className="mt-6 border-t border-zinc-100 pt-4">
               <button 
                 onClick={() => setShowExtra(!showExtra)}
-                className="flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                className="flex items-center gap-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
               >
                 {showExtra ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 {showExtra ? 'Verberg SLO toelichtingen' : 'Toon extra SLO uitwerkingen & voorbeelden'}
@@ -305,7 +282,7 @@ export default function GoalDetail() {
                       <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3">Voorbeelden</h4>
                       <ul className="space-y-2">
                         {validExamples.map((ex, i) => (
-                          <li key={i} className="text-sm text-zinc-700 flex items-start gap-2">
+                          <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
                             <span className="text-emerald-400 mt-0.5">•</span>
                             <span>{ex}</span>
                           </li>
@@ -318,7 +295,7 @@ export default function GoalDetail() {
                       <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3">Uitwerkingen (Havo/Vwo)</h4>
                       <ul className="space-y-2">
                         {validElaborations.map((el, i) => (
-                          <li key={i} className="text-sm text-zinc-700 flex items-start gap-2">
+                          <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
                             <span className="text-emerald-400 mt-0.5">•</span>
                             <span>{el}</span>
                           </li>
@@ -341,8 +318,8 @@ export default function GoalDetail() {
           className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
         >
           <div className="flex items-baseline gap-4">
-            <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Goedgekeurd Lesmateriaal</h2>
-            <span className="text-sm font-medium text-zinc-500">{videos.length} items</span>
+            <h2 className="text-lg font-semibold text-zinc-900 tracking-tight">Goedgekeurd Lesmateriaal</h2>
+            <span className="text-xs font-medium text-zinc-500">{videos.length} items</span>
           </div>
           <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isGoedgekeurdExpanded ? 'rotate-90' : ''}`} />
         </button>
@@ -351,12 +328,12 @@ export default function GoalDetail() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 mt-4">
             {videos.map((video) => {
               const badge = getSourceBadge(video.provider, video.sourceName);
-              const assessed = video.assessedGoals?.find(g => g.goalId === id);
+              const score = video.matchScore;
               return (
                 <div 
                   key={video.id} 
                   onClick={() => navigate(`/teacher/videos/${encodeURIComponent(video.id)}`)}
-                  className="flex flex-col cursor-pointer group"
+                  className="flex flex-col cursor-pointer group relative"
                 >
                   {/* Thumbnail */}
                   <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-2 sm:mb-3">
@@ -390,11 +367,51 @@ export default function GoalDetail() {
                         <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
                         Goedgekeurd
                       </span>
-                      {assessed && (
+                      {score !== undefined && (
                         <span className="text-[9px] sm:text-xs text-zinc-500 font-medium">
-                          {assessed.matchScore}% match
+                          {score}% match
                         </span>
                       )}
+                    </div>
+                  </div>
+
+                  {/* SLO Match Card (Hover) */}
+                  <div className="absolute z-50 left-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2 hidden group-hover:block w-[280px] sm:w-[320px] bg-white border border-zinc-200 rounded-xl shadow-xl p-4 cursor-default">
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="text-sm font-bold text-zinc-900">SLO-match</h4>
+                      {score !== undefined && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          {score}%
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2 text-xs text-zinc-700">
+                      <div className="flex items-start gap-2">
+                        <span className="font-semibold w-12 shrink-0">Dekt:</span>
+                        <span>{video.sloAlignment?.coveredElaborations?.length || 0} uitwerkingen</span>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <span className="font-semibold w-12 shrink-0">Mist:</span>
+                        <span className="line-clamp-2">
+                          {video.sloAlignment?.missingParts?.length 
+                            ? video.sloAlignment.missingParts.join(", ") 
+                            : 'Geen grote hiaten'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-start gap-2">
+                        <span className="font-semibold w-12 shrink-0">Reden:</span>
+                        <span className="line-clamp-3 leading-relaxed">
+                          {video.sloAlignment?.reasonShort || video.matchReason || 'Geen reden opgegeven.'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-2 pt-1">
+                        <span className="font-semibold w-12 shrink-0">Status:</span>
+                        <span className="capitalize text-emerald-600 font-medium">Goedgekeurd</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -414,7 +431,7 @@ export default function GoalDetail() {
 
       {/* Discovery Section */}
       <div className="space-y-4 pt-8 border-t border-zinc-100">
-        <h2 className="text-2xl font-semibold text-zinc-900 tracking-tight">Nieuwe suggesties zoeken</h2>
+        <h2 className="text-xl font-semibold text-zinc-900 tracking-tight">Nieuwe suggesties zoeken</h2>
         
         {statusMsg && (
           <div className={`p-4 rounded-xl flex items-center justify-between shadow-sm ${statusMsg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
@@ -426,8 +443,8 @@ export default function GoalDetail() {
         )}
 
         {/* Live Search Form */}
-        <div className="bg-zinc-50/50 rounded-lg p-6">
-          <p className="text-sm text-zinc-600 mb-6 max-w-2xl">
+        <div className="bg-zinc-50/50 rounded-lg p-5">
+          <p className="text-xs text-zinc-600 mb-5 max-w-2xl">
             Vind direct nieuw materiaal voor dit doel. Gebruik de automatische zoeker over alle beschikbare bronnen, of voeg handmatig een video of artikel toe via een link.
           </p>
           
@@ -435,16 +452,16 @@ export default function GoalDetail() {
             {/* AI Generator */}
             <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <h3 className="font-semibold text-purple-900">Slimme Suggesties (AI)</h3>
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <h3 className="text-sm font-semibold text-purple-900">Slimme Suggesties (AI)</h3>
               </div>
-              <p className="text-sm text-purple-700/80 mb-5">
+              <p className="text-xs text-purple-700/80 mb-5">
                 Laat de AI automatisch het beste lesmateriaal bij dit kerndoel zoeken op internet en platforms.
               </p>
               <button 
                 onClick={handleDiscovery}
                 disabled={isDiscovering}
-                className="w-full py-3 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
+                className="w-full py-2.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 {isDiscovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 12 suggesties genereren
@@ -454,10 +471,10 @@ export default function GoalDetail() {
             {/* Manual Search */}
             <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-5">
               <div className="flex items-center gap-2 mb-2">
-                <Search className="w-5 h-5 text-zinc-600" />
-                <h3 className="font-semibold text-zinc-900">Zelf zoeken</h3>
+                <Search className="w-4 h-4 text-zinc-600" />
+                <h3 className="text-sm font-semibold text-zinc-900">Zelf zoeken</h3>
               </div>
-              <p className="text-sm text-zinc-500 mb-5">
+              <p className="text-xs text-zinc-500 mb-5">
                 Zoek je iets specifieks? Typ een zoekterm in of plak een link van YouTube / Wikiwijs.
               </p>
               <form 
@@ -465,18 +482,18 @@ export default function GoalDetail() {
                 className="flex flex-col gap-3"
               >
                 <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input 
                     type="text" 
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Zoekterm of link..." 
-                    className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-900 shadow-sm"
+                    className="w-full pl-9 pr-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-xs text-zinc-900 shadow-sm"
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <select
-                    className="flex-1 px-3 py-3 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-sm text-zinc-700 shadow-sm"
+                    className="flex-1 px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-xs text-zinc-700 shadow-sm"
                     onChange={(e) => {
                       if(e.target.value) {
                          setSearchQuery(prev => prev.trim() + " " + e.target.value);
@@ -497,9 +514,9 @@ export default function GoalDetail() {
                   <button 
                     type="submit"
                     disabled={isSearching || !searchQuery}
-                    className="sm:w-32 py-3 bg-zinc-900 text-white rounded-lg text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
+                    className="sm:w-28 py-2.5 bg-zinc-900 text-white rounded-lg text-xs font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm"
                   >
-                    {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Zoeken'}
+                    {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Zoeken'}
                   </button>
                 </div>
               </form>
@@ -525,9 +542,9 @@ export default function GoalDetail() {
                   const badge = getSourceBadge(candidate.provider, candidate.sourceName);
                   
                   return (
-                    <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
+                    <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-visible group">
                       {/* Thumbnail */}
-                      <div className="relative w-28 sm:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
+                      <div className="relative w-28 sm:w-48 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
                         {renderThumbnail(candidate)}
                         {candidate.duration && candidate.duration !== 'Web/Bron' && (
                           <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
@@ -542,24 +559,15 @@ export default function GoalDetail() {
                             {badge.icon}
                             {badge.label}
                           </span>
-                          <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                          <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border} cursor-help`}>
                             {candidate.matchScore}% - {sLabel.label}
+                          </span>
+                          <span className="inline-flex items-center text-zinc-500 text-[10px] sm:text-xs font-medium ml-auto">
+                            Nieuw
                           </span>
                         </div>
                         
                         <h4 className="text-sm sm:text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
-                        
-                        <div className="hidden sm:block text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
-                          <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
-                          <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
-                          {candidate.matchEvidence && candidate.matchEvidence.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {candidate.matchEvidence.map((ev: string, i: number) => (
-                                <span key={i} className="bg-white border border-zinc-200 text-zinc-500 text-[10px] px-1.5 py-0.5 rounded">{ev}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
                         
                         <div className="mt-auto sm:mt-2 self-end">
                           <button 
@@ -569,6 +577,44 @@ export default function GoalDetail() {
                             <span className="hidden sm:inline">Ter beoordeling insturen</span>
                             <span className="sm:hidden">Beoordelen</span>
                           </button>
+                        </div>
+                      </div>
+
+                      {/* SLO Match Card (Hover) */}
+                      <div className="absolute z-50 right-0 sm:right-[150px] top-full sm:top-1/2 sm:-translate-y-1/2 mt-2 sm:mt-0 hidden group-hover:block w-[280px] sm:w-[320px] bg-white border border-zinc-200 rounded-xl shadow-xl p-4 cursor-default">
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="text-sm font-bold text-zinc-900">SLO-match</h4>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                            {candidate.matchScore}%
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2 text-xs text-zinc-700">
+                          <div className="flex items-start gap-2">
+                            <span className="font-semibold w-12 shrink-0">Dekt:</span>
+                            <span>{candidate.sloAlignment?.coveredElaborations?.length || 0} uitwerkingen</span>
+                          </div>
+                          
+                          <div className="flex items-start gap-2">
+                            <span className="font-semibold w-12 shrink-0">Mist:</span>
+                            <span className="line-clamp-2">
+                              {candidate.sloAlignment?.missingParts?.length 
+                                ? candidate.sloAlignment.missingParts.join(", ") 
+                                : 'Geen grote hiaten'}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-start gap-2">
+                            <span className="font-semibold w-12 shrink-0">Reden:</span>
+                            <span className="line-clamp-3 leading-relaxed">
+                              {candidate.sloAlignment?.reasonShort || candidate.matchReason || 'Geen reden opgegeven.'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-start gap-2 pt-1">
+                            <span className="font-semibold w-12 shrink-0">Status:</span>
+                            <span className="capitalize font-medium text-zinc-600">Nieuw</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -610,9 +656,9 @@ export default function GoalDetail() {
                     const badge = getSourceBadge(candidate.provider, candidate.sourceName);
                     
                     return (
-                      <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-hidden group">
+                      <div key={idx} className="flex flex-row gap-3 sm:gap-6 p-3 sm:p-5 bg-white border border-zinc-200 rounded-xl shadow-sm relative overflow-visible group">
                         {/* Thumbnail */}
-                        <div className="relative w-28 sm:w-56 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
+                        <div className="relative w-28 sm:w-48 aspect-video rounded-lg overflow-hidden bg-zinc-100 shrink-0 border border-zinc-200">
                           {renderThumbnail(candidate)}
                           {candidate.duration && candidate.duration !== 'Web/Bron' && (
                             <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
@@ -628,20 +674,16 @@ export default function GoalDetail() {
                               {badge.label}
                             </span>
                             {candidate.matchScore > 0 && (
-                              <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                              <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-semibold border ${sLabel.bg} ${sLabel.color} ${sLabel.border} cursor-help`}>
                                 {candidate.matchScore}% - {sLabel.label}
                               </span>
                             )}
+                            <span className="inline-flex items-center text-zinc-500 text-[10px] sm:text-xs font-medium ml-auto">
+                              Nieuw
+                            </span>
                           </div>
                           
                           <h4 className="text-sm sm:text-base font-semibold text-zinc-900 leading-tight mb-2 line-clamp-2">{candidate.title}</h4>
-                          
-                          {candidate.matchReason && (
-                            <div className="hidden sm:block text-sm bg-zinc-50 p-3 rounded-lg border border-zinc-100 mb-4 mt-auto">
-                              <p className="font-medium text-zinc-700 text-xs mb-1 uppercase tracking-wider">Waarom gevonden?</p>
-                              <p className="text-zinc-600 line-clamp-3">{candidate.matchReason}</p>
-                            </div>
-                          )}
                           
                           <div className="mt-auto pt-2 self-end flex gap-2">
                             <button 
@@ -660,6 +702,46 @@ export default function GoalDetail() {
                             </button>
                           </div>
                         </div>
+
+                        {/* SLO Match Card (Hover) */}
+                        <div className="absolute z-50 right-0 sm:right-[150px] top-full sm:top-1/2 sm:-translate-y-1/2 mt-2 sm:mt-0 hidden group-hover:block w-[280px] sm:w-[320px] bg-white border border-zinc-200 rounded-xl shadow-xl p-4 cursor-default">
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="text-sm font-bold text-zinc-900">SLO-match</h4>
+                            {candidate.matchScore > 0 && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${sLabel.bg} ${sLabel.color} ${sLabel.border}`}>
+                                {candidate.matchScore}%
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2 text-xs text-zinc-700">
+                            <div className="flex items-start gap-2">
+                              <span className="font-semibold w-12 shrink-0">Dekt:</span>
+                              <span>{candidate.sloAlignment?.coveredElaborations?.length || 0} uitwerkingen</span>
+                            </div>
+                            
+                            <div className="flex items-start gap-2">
+                              <span className="font-semibold w-12 shrink-0">Mist:</span>
+                              <span className="line-clamp-2">
+                                {candidate.sloAlignment?.missingParts?.length 
+                                  ? candidate.sloAlignment.missingParts.join(", ") 
+                                  : 'Geen grote hiaten'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-start gap-2">
+                              <span className="font-semibold w-12 shrink-0">Reden:</span>
+                              <span className="line-clamp-3 leading-relaxed">
+                                {candidate.sloAlignment?.reasonShort || candidate.matchReason || 'Geen reden opgegeven.'}
+                              </span>
+                            </div>
+
+                            <div className="flex items-start gap-2 pt-1">
+                              <span className="font-semibold w-12 shrink-0">Status:</span>
+                              <span className="capitalize font-medium text-zinc-600">Nieuw</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -672,19 +754,7 @@ export default function GoalDetail() {
 
       </div>
 
-      <PasswordModal 
-        isOpen={showPasswordModal}
-        onSuccess={() => {
-          setShowPasswordModal(false);
-          if (sessionStorage.getItem('pending_action') === 'discovery') {
-            sessionStorage.removeItem('pending_action');
-            handleDiscovery();
-          } else {
-            handleLiveSearch();
-          }
-        }}
-        onClose={() => setShowPasswordModal(false)}
-      />
+
     </div>
   );
 }

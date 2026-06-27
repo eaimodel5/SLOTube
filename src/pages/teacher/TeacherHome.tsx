@@ -1,9 +1,8 @@
-import { useState, useEffect, FormEvent } from 'react';
-import { Search, ChevronRight, PlayCircle, Loader2, Youtube, FileText, ShieldX, Settings2, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, ArrowRight, PlayCircle, Loader2, Youtube, FileText, ShieldX, Settings2, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../lib/firebase';
 import { collection, getDocs, orderBy, query, limit, where } from 'firebase/firestore';
-import { PasswordModal } from '../../components/PasswordModal';
 import { isTextSimilar } from '../../lib/textUtils';
 
 interface Goal {
@@ -16,9 +15,12 @@ interface Goal {
   elaborations?: string[];
 }
 
+import { Tile } from '../../components/ui/Tile';
+
 export default function TeacherHome() {
   const navigate = useNavigate();
   const [subjects, setSubjects] = useState<{title: string, count: number}[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [dbVideos, setDbVideos] = useState<any[]>([]);
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
   const [matchedGoals, setMatchedGoals] = useState<Goal[] | null>(null);
@@ -27,7 +29,6 @@ export default function TeacherHome() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [liveResults, setLiveResults] = useState<any[] | null>(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{type: 'error'|'success', text: string} | null>(null);
   const [showSourceSettings, setShowSourceSettings] = useState(false);
   
@@ -39,13 +40,6 @@ export default function TeacherHome() {
     wikiwijs: true,
     general: true
   });
-
-  // Collapsible states
-  const [isRecentExpanded, setIsRecentExpanded] = useState(true);
-  const [isSubjectsExpanded, setIsSubjectsExpanded] = useState(true);
-  const [isKerndoelenExpanded, setIsKerndoelenExpanded] = useState(true);
-  const [isBibliotheekExpanded, setIsBibliotheekExpanded] = useState(true);
-  const [isLiveExpanded, setIsLiveExpanded] = useState(true);
 
   const renderThumbnail = (item: any) => {
     const isWeb = item.sourceType === 'website' || item.duration === 'Web/Bron';
@@ -84,7 +78,9 @@ export default function TeacherHome() {
           title,
           count
         }));
-        setSubjects(subjectList.sort((a,b) => a.title.localeCompare(b.title)));
+        const sortedList = subjectList.sort((a,b) => a.title.localeCompare(b.title));
+        setSubjects(sortedList);
+        if (sortedList.length > 0) setSelectedSubject(sortedList[0].title);
       })
       .catch(err => console.error("Could not fetch goals", err));
 
@@ -93,7 +89,7 @@ export default function TeacherHome() {
         const q = query(
           collection(db, "videos"), 
           where("status", "==", "approved"),
-          limit(6)
+          limit(10)
         );
         const snap = await getDocs(q);
         const vids: any[] = [];
@@ -117,11 +113,6 @@ export default function TeacherHome() {
   const handleLiveSearch = async () => {
     if (!searchQuery.trim()) return;
     
-    if (sessionStorage.getItem('eai_auth') !== 'true') {
-      setShowPasswordModal(true);
-      return;
-    }
-
     setStatusMsg(null);
     setIsSearching(true);
     
@@ -147,11 +138,6 @@ export default function TeacherHome() {
     // Group matches by subject and pick the best representation
     const topMatches = matches.slice(0, 3);
     setMatchedGoals(topMatches);
-    
-    // Expand sections on search
-    setIsKerndoelenExpanded(true);
-    setIsBibliotheekExpanded(true);
-    setIsLiveExpanded(true);
 
     // Search own database
     try {
@@ -178,7 +164,6 @@ export default function TeacherHome() {
       
       let effectiveQueries = [searchQuery];
       if (!isGenericUrl && topMatches.length > 0) {
-        // Enkel keyword toevoegen (vak of domein) in plaats van hele lange zinnen, anders 0 resultaten
         const top = topMatches[0];
         effectiveQueries = [
           searchQuery,
@@ -191,7 +176,7 @@ export default function TeacherHome() {
         : { queries: effectiveQueries, maxResultsPerQuery: 16, sources: activeSources };
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       const resp = await fetch(endpoint, {
         method: 'POST',
@@ -203,17 +188,15 @@ export default function TeacherHome() {
       
       const data = await resp.json();
       if (resp.ok) {
-        // Safe live results
         setLiveResults(data);
-        // Save to session so VideoDetail can read title/desc if it's not in db
         sessionStorage.setItem('live_search_results', JSON.stringify(data));
       } else {
-        setStatusMsg({ type: 'error', text: data.error || "Fout bij YouTube zoeken." });
+        setStatusMsg({ type: 'error', text: data.error || "Fout bij zoeken in bronnen." });
       }
     } catch (e: any) {
       console.error(e);
       if (e.name === 'AbortError') {
-        setStatusMsg({ type: 'error', text: "Het zoeken duurt te lang. Probeert u het nog eens, of specificeer de zoekopdracht." });
+        setStatusMsg({ type: 'error', text: "Het zoeken duurt te lang. Probeer de zoekopdracht te verfijnen." });
       } else {
         setStatusMsg({ type: 'error', text: "Er is iets misgegaan bij het zoeken." });
       }
@@ -223,12 +206,12 @@ export default function TeacherHome() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-12">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-12">
       {/* Header section with Search */}
       <section className="space-y-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-zinc-900">Lesmateriaal vinden</h1>
-          <p className="text-zinc-500 mt-1">Zoek in de actuele lesdatabase of zoek live online bronnen via YouTube of weblinks.</p>
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-zinc-900">Lesmateriaal vinden</h1>
+          <p className="text-sm text-zinc-500 mt-1">Doorzoek de bibliotheek, actieve kerndoelen of vind live online bronnen.</p>
         </div>
         
         {statusMsg && (
@@ -242,42 +225,44 @@ export default function TeacherHome() {
 
         <form 
           onSubmit={(e) => { e.preventDefault(); handleLiveSearch(); }}
-          className="relative max-w-3xl flex flex-col gap-3"
+          className="relative max-w-3xl flex flex-col gap-3 p-4 sm:p-6 bg-white border border-zinc-200 rounded-2xl shadow-sm"
         >
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 relative z-20">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+              <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
+                 <Search className="w-4 h-4 text-zinc-400" />
+              </div>
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Zoek lesmateriaal via een onderwerp, URL, etc..." 
-                className="w-full pl-12 pr-4 py-3.5 bg-zinc-100/50 border border-zinc-200 hover:border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white transition-all text-base text-zinc-900 shadow-sm"
+                placeholder="Zoek een onderwerp, domein of plak een URL..." 
+                className="w-full pl-10 pr-4 py-3 bg-zinc-50 border border-zinc-200 hover:border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white transition-all text-xs sm:text-sm text-zinc-900 shadow-sm"
               />
             </div>
             <div className="flex gap-2">
               <button 
                 type="button"
                 onClick={() => setShowSourceSettings(!showSourceSettings)}
-                className={`p-3.5 border border-zinc-200 hover:border-zinc-300 rounded-lg transition-colors flex items-center justify-center ${showSourceSettings ? 'bg-zinc-100 text-zinc-900' : 'bg-white text-zinc-600'}`}
+                className={`p-3 border rounded-xl transition-colors shrink-0 flex items-center justify-center ${showSourceSettings ? 'bg-zinc-100 border-zinc-300 text-zinc-900' : 'bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50'}`}
                 title="Zoekbronnen instellen"
               >
-                <Settings2 className="w-5 h-5" />
+                <Settings2 className="w-4 h-4" />
               </button>
               <button 
                 type="submit"
                 disabled={isSearching || !searchQuery}
-                className="flex-1 sm:flex-none px-6 py-3.5 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors shadow-sm shrink-0"
+                className="flex-1 sm:flex-none px-5 py-3 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-800 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-sm shrink-0"
               >
-                {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-4 h-4" />}
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 Zoeken
               </button>
             </div>
           </div>
           
           {showSourceSettings && (
-            <div className="flex flex-col gap-2 p-3 mt-1 bg-white border border-zinc-200 rounded-lg shadow-sm w-full animate-in slide-in-from-top-1 fade-in duration-200">
-              <div className="text-sm font-medium text-zinc-700 px-1">Geselecteerde zoekbronnen:</div>
+            <div className="flex flex-col gap-2.5 pt-3 border-t border-zinc-100 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Actieve zoekbronnen</div>
               <div className="flex flex-wrap items-center gap-2">
                 {Object.keys(activeSources).map((sourceKey) => {
                   let label = sourceKey;
@@ -287,7 +272,6 @@ export default function TeacherHome() {
                   else if (sourceKey === 'youtube') label = 'YouTube';
                   else if (sourceKey === 'general') label = 'Algemeen Web';
                   
-                  // Icons for different sources to make it clearer
                   let Icon = FileText;
                   if (sourceKey === 'youtube') Icon = Youtube;
 
@@ -295,8 +279,8 @@ export default function TeacherHome() {
                   return (
                     <label 
                       key={sourceKey} 
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-colors border ${
-                        isActive ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100'
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-colors border text-xs ${
+                        isActive ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-zinc-50 text-zinc-500 border-zinc-200 hover:bg-zinc-100 hover:text-zinc-700'
                       }`}
                     >
                       <input 
@@ -305,8 +289,8 @@ export default function TeacherHome() {
                         checked={isActive}
                         onChange={(e) => setActiveSources(prev => ({ ...prev, [sourceKey]: e.target.checked }))}
                       />
-                      <Icon className="w-4 h-4" />
-                      <span className="text-sm font-medium">{label}</span>
+                      <Icon className="w-3 h-3" />
+                      <span className="font-medium">{label}</span>
                     </label>
                   );
                 })}
@@ -314,234 +298,209 @@ export default function TeacherHome() {
             </div>
           )}
         </form>
-      </section>
 
-      {/* Live YouTube and Web Results - Moved UP */}
-      {liveResults && (
-        <section className="space-y-4 pt-2">
-          <button 
-            type="button"
-            onClick={() => setIsLiveExpanded(!isLiveExpanded)}
-            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
-          >
-            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Gevonden zoekresultaten {searchQuery ? `voor "${searchQuery}"` : ""}</h2>
-            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isLiveExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {isLiveExpanded && (
-            <>
-            {liveResults.length === 0 ? (
-              <div className="text-sm text-zinc-500 py-10 text-center bg-zinc-50/50 rounded-lg border border-zinc-100">
-                <p className="mb-3">Geen lesmateriaal online gevonden.</p>
-                {matchedGoals && matchedGoals.length > 0 && (
-                  <div className="mt-4">
-                    <span className="text-zinc-700 mb-3 block">Probeer suggesties uit de kerndoelen:</span>
-                    <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
-                      {matchedGoals.slice(0, 2).flatMap(g => [...(g.examples || []), ...(g.elaborations || [])]).slice(0, 4).map((q, i) => (
-                        <button 
-                          key={i} 
-                          onClick={() => {
-                            setSearchQuery(q);
-                            setTimeout(() => { document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })) }, 10);
-                          }}
-                          className="px-4 py-2 bg-white border border-zinc-200 hover:border-zinc-300 rounded-md text-sm text-zinc-700 transition-colors shadow-sm"
-                        >
-                          {q.length > 50 ? q.substring(0, 50) + '...' : q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+        {/* Subjects displayed cleanly directly below the search bar */}
+        {!liveResults && !dbVideoResults && (
+          <div className="pt-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Bladeren per vakgebied</h3>
+            {subjects.length === 0 ? (
+               <div className="text-xs text-zinc-400">Vakgebieden laden...</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mt-2">
-                {liveResults.map(vid => (
-                   <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group flex flex-col">
-                      <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-2 sm:mb-3">
-                        {renderThumbnail(vid)}
+               <div className="flex flex-col gap-2 mt-3">
+                 {subjects.map(subject => {
+                    const isExpanded = selectedSubject === subject.title;
+                    return (
+                      <div key={subject.title} className="bg-white border text-left border-zinc-200 rounded-2xl shadow-sm overflow-hidden transition-all">
+                        <button 
+                          onClick={() => setSelectedSubject(isExpanded ? null : subject.title)}
+                          className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${isExpanded ? 'bg-zinc-50' : 'hover:bg-zinc-50'}`}
+                        >
+                           <span className={`text-sm ${isExpanded ? 'text-zinc-900 font-semibold' : 'text-zinc-700 font-medium'}`}>{subject.title}</span>
+                           <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">{subject.count}</span>
+                              <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-300 ${isExpanded ? '-rotate-180 text-zinc-900' : ''}`} />
+                           </div>
+                        </button>
                         
-                        {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
-                          <div className="absolute inset-0 bg-white/40 group-hover:bg-white/20 transition-colors flex items-center justify-center">
-                             <span className="bg-white/95 text-zinc-900 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm shadow-sm border border-black/5">Artikel</span>
+                        {/* Expanded content */}
+                        <div className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                          <div className="overflow-hidden">
+                            <div className="p-4 sm:p-5 bg-zinc-50/50 border-t border-zinc-100">
+                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                  {allGoals.filter(g => g.subject === subject.title).map(goal => (
+                                     <Tile
+                                       key={goal.id}
+                                       onClick={() => navigate(`/teacher/goals/${goal.id}`)}
+                                       title={goal.domain}
+                                       subtitle={goal.sentence}
+                                       icon={
+                                         <div className="inline-flex items-center justify-center px-2 h-8 rounded-md bg-orange-50 text-orange-600 font-mono text-xs font-bold tracking-wide">
+                                           {goal.id}
+                                         </div>
+                                       }
+                                     />
+                                  ))}
+                               </div>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                            <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                        )}
-  
-                        <div className="absolute bottom-1 right-1 sm:bottom-1.5 sm:right-1.5 bg-black/80 text-white text-[9px] sm:text-[10px] font-mono px-1 sm:px-1.5 py-0.5 rounded">
-                          {vid.duration}
                         </div>
                       </div>
-                      <h3 className="font-medium text-xs sm:text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
-                      <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 sm:mt-1 truncate">{vid.channelTitle}</p>
+                    );
+                 })}
+               </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* --- Search Results Area --- */}
+      {(liveResults || dbVideoResults || matchedGoals) && (
+        <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-6 border-t border-zinc-200">
+          
+          {/* 1. Database Matches */}
+          {dbVideoResults && dbVideoResults.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-900 flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold">
+                  {dbVideoResults.length}
+                </span>
+                Gevonden in de bibliotheek
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {dbVideoResults.map(vid => (
+                   <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
+                      <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-3 border border-zinc-200 shadow-sm transition-all group-hover:shadow-md">
+                        {renderThumbnail(vid)}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                          <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md scale-95 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all" />
+                        </div>
+                      </div>
+                      <h3 className="font-medium text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors">{vid.title}</h3>
+                      <p className="text-xs text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
                    </div>
                 ))}
               </div>
-            )}
-            </>
+            </section>
           )}
-        </section>
-      )}
 
-      {/* Database Matches */}
-      {dbVideoResults && dbVideoResults.length > 0 && (
-        <section className="space-y-4 pt-4">
-          <button 
-            type="button"
-            onClick={() => setIsBibliotheekExpanded(!isBibliotheekExpanded)}
-            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
-          >
-            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Gevonden in de bibliotheek</h2>
-            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isBibliotheekExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          {isBibliotheekExpanded && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mt-2">
-              {dbVideoResults.map(vid => (
-                 <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-2 sm:mb-3">
-                      {renderThumbnail(vid)}
-                      <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                        <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+          {/* 2. Matched Kerndoelen */}
+          {matchedGoals && matchedGoals.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Gerelateerde kerndoelen</h2>
+              <div className="flex flex-col gap-3">
+                {matchedGoals.map(goal => (
+                  <Tile
+                    key={goal.id}
+                    onClick={() => navigate(`/teacher/goals/${goal.id}`)}
+                    title={goal.sentence}
+                    subtitle={goal.description && !isTextSimilar(goal.sentence, goal.description) ? goal.description : goal.subject}
+                    icon={
+                      <div className="inline-flex items-center justify-center px-2 h-8 rounded-md bg-zinc-100 text-zinc-600 font-mono text-xs font-bold tracking-wide">
+                        {goal.id}
                       </div>
-                    </div>
-                    <h3 className="font-medium text-xs sm:text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 sm:mt-1 truncate">{vid.channelTitle}</p>
-                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Matched Kerndoelen */}
-      {matchedGoals && matchedGoals.length > 0 && (
-        <section className="space-y-4 pt-2">
-          <button 
-            type="button"
-            onClick={() => setIsKerndoelenExpanded(!isKerndoelenExpanded)}
-            className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group border-b border-zinc-100"
-          >
-            <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Gerelateerde kerndoelen</h2>
-            <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isKerndoelenExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          
-          {isKerndoelenExpanded && (
-            <div className="grid grid-cols-1 divide-y divide-zinc-100 border-t border-b border-zinc-100 mt-2">
-              {matchedGoals.map(goal => (
-                <div 
-                  key={goal.id} 
-                  onClick={() => navigate(`/teacher/goals/${goal.id}`)} 
-                  className="py-4 hover:bg-zinc-50 cursor-pointer transition-colors group flex flex-col sm:flex-row gap-4"
-                >
-                  <div className="sm:w-32 shrink-0">
-                    <div className="text-xs uppercase font-semibold text-zinc-500">{goal.subject}</div>
-                    <div className="text-sm text-zinc-400 mt-1">{goal.id}</div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-zinc-900 group-hover:text-zinc-600 transition-colors">{goal.sentence}</h3>
-                    {goal.description && !isTextSimilar(goal.sentence, goal.description) && (
-                      <p className="mt-1 text-sm text-zinc-500 line-clamp-2">{goal.description}</p>
-                    )}
-                  </div>
-                  <div className="hidden sm:flex items-center justify-end w-8 text-zinc-300 group-hover:text-zinc-900 transition-colors">
-                    <ChevronRight className="w-5 h-5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      <section className="space-y-4 pt-6 border-t border-zinc-100">
-        <button 
-          type="button"
-          onClick={() => setIsRecentExpanded(!isRecentExpanded)}
-          className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
-        >
-          <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Actueel in de bibliotheek</h2>
-          <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isRecentExpanded ? 'rotate-90' : ''}`} />
-        </button>
-        {isRecentExpanded && (
-          <>
-          {dbVideos.length === 0 ? (
-            <div className="py-12 text-center bg-zinc-50/50 rounded-lg">
-              <p className="text-zinc-500 text-sm">De bibliotheek is nog leeg.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 mt-2">
-              {dbVideos.map(vid => (
-                 <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-zinc-100 mb-2 sm:mb-3">
-                      {renderThumbnail(vid)}
-                      {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
-                        <div className="absolute inset-0 bg-white/40 group-hover:bg-white/20 transition-colors flex items-center justify-center">
-                           <span className="bg-white/95 text-zinc-900 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm shadow-sm border border-black/5">Artikel</span>
-                        </div>
-                      ) : (
-                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                           <PlayCircle className="w-8 h-8 sm:w-10 sm:h-10 text-white/90 drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="font-medium text-xs sm:text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:underline decoration-zinc-300 underline-offset-2">{vid.title}</h3>
-                    <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5 sm:mt-1 truncate">{vid.channelTitle}</p>
-                 </div>
-              ))}
-            </div>
-          )}
-          </>
-        )}
-      </section>
-
-      {/* Subjects text list */}
-      <section className="space-y-4 pt-6 mt-6 border-t border-zinc-100 pb-12">
-        <button 
-          type="button"
-          onClick={() => setIsSubjectsExpanded(!isSubjectsExpanded)}
-          className="flex items-center justify-between w-full hover:bg-zinc-50 p-2 -ml-2 rounded-lg transition-colors group"
-        >
-          <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Vakgebieden</h2>
-          <ChevronRight className={`w-5 h-5 text-zinc-400 transition-transform ${isSubjectsExpanded ? 'rotate-90' : ''}`} />
-        </button>
-        {isSubjectsExpanded && (
-          <>
-          {subjects.length === 0 ? (
-             <div className="text-sm text-zinc-500 mt-2">Laden...</div>
-          ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-                {subjects.map(subject => (
-                  <button 
-                    key={subject.title}
-                    onClick={() => navigate(`/teacher/goals?subject=${encodeURIComponent(subject.title)}`)}
-                    className="flex justify-between items-center p-4 bg-white border border-zinc-200 hover:border-zinc-300 hover:shadow-sm rounded-xl transition-all text-left group"
-                  >
-                    <span className="font-semibold text-zinc-800 group-hover:text-zinc-900 transition-colors truncate pr-3">{subject.title}</span>
-                    <span className="text-xs font-medium text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-md shrink-0">{subject.count} doelen</span>
-                  </button>
+                    }
+                  />
                 ))}
               </div>
+            </section>
           )}
-          </>
-        )}
-      </section>
 
-      <div className="pt-12 border-t border-zinc-100">
-        <p className="text-sm text-zinc-400 text-center">
+          {/* 3. Live Results */}
+          {liveResults && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold tracking-tight text-zinc-900">
+                Live resultaten online
+              </h2>
+              {liveResults.length === 0 ? (
+                <div className="text-sm text-zinc-500 py-10 text-center bg-white border border-zinc-200 rounded-2xl shadow-sm">
+                  <p className="mb-3">Geen direct lesmateriaal online gevonden voor deze zoekopdracht.</p>
+                  {matchedGoals && matchedGoals.length > 0 && (
+                    <div className="mt-6 border-t border-zinc-100 pt-6">
+                      <span className="text-zinc-700 font-medium mb-3 block">Probeer te zoeken op gerelateerde termen:</span>
+                      <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
+                        {matchedGoals.slice(0, 2).flatMap(g => [...(g.examples || []), ...(g.elaborations || [])]).slice(0, 6).map((q, i) => (
+                          <button 
+                            key={i} 
+                            onClick={() => {
+                              setSearchQuery(q);
+                              setTimeout(() => { document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })) }, 10);
+                            }}
+                            className="px-4 py-2 bg-zinc-50 border border-zinc-200 hover:border-zinc-300 hover:bg-zinc-100 rounded-full text-sm text-zinc-700 transition-colors"
+                          >
+                            {q.length > 40 ? q.substring(0, 40) + '...' : q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {liveResults.map(vid => (
+                     <div key={vid.id} onClick={() => navigate(`/teacher/videos/${vid.id}`)} className="cursor-pointer group flex flex-col">
+                        <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-3 border border-zinc-200 shadow-sm transition-all group-hover:shadow-md">
+                          {renderThumbnail(vid)}
+                          
+                          {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
+                            <div className="absolute inset-0 bg-white/40 group-hover:bg-white/20 transition-colors flex items-center justify-center">
+                               <span className="bg-white/95 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm shadow-sm border border-black/5">Artikel</span>
+                            </div>
+                          ) : (
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                              <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md scale-95 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all" />
+                            </div>
+                          )}
+    
+                          <div className="absolute bottom-1.5 right-1.5 bg-black/80 backdrop-blur-sm text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow-sm">
+                            {vid.duration}
+                          </div>
+                        </div>
+                        <h3 className="font-medium text-xs sm:text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors">{vid.title}</h3>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
+                     </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+        </div>
+      )}
+
+      {/* Default State: Recently added videos */}
+      {!liveResults && !dbVideoResults && dbVideos.length > 0 && (
+        <section className="space-y-4 pt-6 border-t border-zinc-200">
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-900">Nieuw in de bibliotheek</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {dbVideos.map(vid => (
+               <div key={vid.id || vid.videoId} onClick={() => navigate(`/teacher/videos/${vid.id || vid.videoId}`)} className="cursor-pointer group flex flex-col">
+                  <div className="relative aspect-video rounded-xl overflow-hidden bg-zinc-100 mb-3 border border-zinc-200 shadow-sm transition-all group-hover:shadow-md">
+                    {renderThumbnail(vid)}
+                    {vid.sourceType === 'website' || vid.duration === 'Web/Bron' ? (
+                      <div className="absolute inset-0 bg-white/40 group-hover:bg-white/20 transition-colors flex items-center justify-center">
+                         <span className="bg-white/95 text-zinc-900 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded backdrop-blur-sm shadow-sm border border-black/5">Artikel</span>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+                         <PlayCircle className="w-10 h-10 text-white/90 drop-shadow-md scale-95 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-medium text-xs sm:text-sm text-zinc-900 line-clamp-2 leading-snug group-hover:text-blue-700 transition-colors">{vid.title}</h3>
+                  <p className="text-[10px] sm:text-xs text-zinc-500 mt-1 truncate">{vid.channelTitle}</p>
+               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="pt-12 mt-12 border-t border-zinc-200">
+        <p className="text-sm font-mono tracking-widest uppercase text-zinc-400 text-center">
           Concept en realisatie door EAI Analyse & Advies
         </p>
       </div>
 
-      <PasswordModal 
-        isOpen={showPasswordModal}
-        onSuccess={() => {
-          setShowPasswordModal(false);
-          handleLiveSearch();
-        }}
-        onClose={() => setShowPasswordModal(false)}
-      />
+
     </div>
   );
 }
